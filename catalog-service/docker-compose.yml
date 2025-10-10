@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: medisupply-catalog-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: catalog_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  catalog-service:
+    build: .
+    container_name: medisupply-catalog-service
+    ports:
+      - "3001:3001"
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/catalog_db
+      HOST: 0.0.0.0
+      PORT: 3001
+      PYTHONPATH: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    command: python -m src.main
+
+volumes:
+  postgres_data:
