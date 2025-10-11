@@ -46,9 +46,12 @@ instance/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
-tests/
+*.cover
+.hypothesis/
+test-results/
 
 # Logs
 *.log

@@ -2,7 +2,7 @@
 
 Microservicio de catálogo de productos para la plataforma MediSupply.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Con Docker Compose
 
@@ -18,7 +18,7 @@ docker-compose exec catalog-service python seed_data.py
 
 ```
 
-## 📋 Endpoints
+##  Endpoints
 
 ### `GET /products`
 Lista productos con filtros opcionales.
@@ -44,7 +44,7 @@ Obtiene detalle completo de un producto por SKU.
 curl "http://localhost:3001/products/JER-001"
 ```
 
-## ⚙️ Configuración
+## Configuración
 
 Variables de entorno en `.env`:
 
@@ -56,7 +56,15 @@ HOST=0.0.0.0
 ```
 
 
-## 🧪 Testing
+## Testing
+
+### Ejecutar Tests
+
+```bash
+pipenv run pytest --cov=src --cov-report=term-missing
+```
+
+### Ejemplos de Uso
 
 ```bash
 # Health check
