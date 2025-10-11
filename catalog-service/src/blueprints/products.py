@@ -36,9 +36,11 @@ def list_products():
         subcategory = request.args.get('subcategory', type=str)
         supplier_id = request.args.get('supplier_id', type=str)
         
-        is_active = request.args.get('is_active', type=str)
-        if is_active is not None:
-            is_active = is_active.lower() in ['true', '1', 'yes']
+        is_active_param = request.args.get('is_active', type=str)
+        if is_active_param is not None:
+            is_active = is_active_param.lower() in ['true', '1', 'yes']
+        else:
+            is_active = True
         
         requires_cold_chain = request.args.get('requires_cold_chain', type=str)
         if requires_cold_chain is not None:

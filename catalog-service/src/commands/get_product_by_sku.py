@@ -3,7 +3,7 @@ from src.errors.errors import NotFoundError
 
 class GetProductBySKU:    
     def __init__(self, sku):
-        if not sku:
+        if not sku or not sku.strip():
             raise ValueError("SKU is required")
         self.sku = sku.strip().upper()
     
