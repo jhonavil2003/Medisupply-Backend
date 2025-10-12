@@ -17,7 +17,11 @@ def seed_data():
     with app.app_context():
         print("🌱 Iniciando seed de datos...")
         
-        print("📦 Creando centros de distribución...")
+        print("�️  Clearing existing data...")
+        db.drop_all()
+        db.create_all()
+        
+        print("�📦 Creando centros de distribución...")
         dc_bogota = DistributionCenter(
             code='DC-BOG-001',
             name='Centro de Distribución Bogotá',
