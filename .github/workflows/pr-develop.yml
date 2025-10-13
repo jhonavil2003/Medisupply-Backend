@@ -14,9 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Cambia a "3.9.6" si tu Pipfile/Pipfile.lock lo exige
         python-version: ["3.12"]
 
-    # Todas las órdenes `run:` se ejecutarán desde ./catalog-service
+    # Todo se ejecuta desde la subcarpeta catalog-service
     defaults:
       run:
         working-directory: ./catalog-service
@@ -35,7 +36,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Cache de pip (global)
+      - name: Upgrade pip & install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pipenv>=2023.0.0"
+
+      # Cache de pip (ruedas/wheels)
       - name: Cache pip
         uses: actions/cache@v4
         with:
@@ -44,7 +50,7 @@ jobs:
           restore-keys: |
             pip-${{ runner.os }}-${{ matrix.python-version }}-
 
-      # Cache del .venv dentro de catalog-service
+      # Cache del entorno virtual del proyecto
       - name: Cache .venv
         id: cache-venv
         uses: actions/cache@v4
@@ -52,24 +58,26 @@ jobs:
           path: catalog-service/.venv
           key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
 
-      - name: Upgrade pip & install pipenv
+      # Vincula Pipenv al intérprete instalado por setup-python
+      - name: Bind Pipenv to runner Python
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install "pipenv>=2023.0.0"
+          pipenv --python "$(python -c 'import sys; print(sys.executable)')"
+          pipenv --venv
 
+      # Instala dependencias usando el lock
       - name: Install deps with Pipenv
-        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           if [ ! -f Pipfile.lock ]; then
-            echo "::error::No se encontró catalog-service/Pipfile.lock (ruta relativa al repo)."
-            echo "::error::Genera el lock file con: (cd catalog-service && pipenv lock) y súbelo."
+            echo "::error::Falta catalog-service/Pipfile.lock. Ejecuta: (cd catalog-service && pipenv lock) y súbelo."
             exit 1
           fi
           pipenv sync --dev --bare --verbose
 
       - name: Show environment
         run: |
-          pipenv --python
+          python --version
+          pipenv --py
+          pipenv --venv
           pipenv graph
 
       - name: Run tests (pytest + coverage)
