@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12"]
 
     env:
       # Hace que Pipenv cree .venv dentro del proyecto (ideal para cachear)
