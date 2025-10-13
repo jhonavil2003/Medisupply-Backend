@@ -4,33 +4,88 @@ on:
   pull_request:
     branches: 
       [develop]
+concurrency:
+  group: ci-pipenv-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  job1:
-    name: Pruebas
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    env:
+      # Hace que Pipenv cree .venv dentro del proyecto (ideal para cachear)
+      PIPENV_VENV_IN_PROJECT: "1"
+      PIPENV_NOSPIN: "1"
+      PIPENV_HIDE_EMOJIS: "1"
 
     steps:
-      - name: Checkout de repositorio
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Configuración de entorno de python
-        uses: actions/setup-python@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12.4'
+          python-version: ${{ matrix.python-version }}
 
-      - name: Instalación de librerías y dependencias
+      # Cache de pip (descarga de wheels)
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('Pipfile.lock') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ matrix.python-version }}-
+
+      # Cache del entorno virtual .venv (ligado al Pipfile.lock)
+      - name: Cache .venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('Pipfile.lock') }}
+
+      - name: Upgrade pip & install pipenv
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install "pipenv>=2023.0.0"
 
-      - name: Correr pruebas
-        id: correr-pruebas
-        run: python -m unittest discover -s tests -v
+      # Si el cache del venv no hit, sincroniza dependencias (usa el lock)
+      - name: Install deps with Pipenv
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          if [ ! -f Pipfile.lock ]; then
+            echo "::error::No se encontró Pipfile.lock. Genera el lock file (pipenv lock) y súbelo."
+            exit 1
+          fi
+          pipenv sync --dev --bare --verbose
 
-      - name: Validar resultado con errores
-        if: ${{ failure() }}
-        run: echo "Una o varias pruebas fallaron"
-        
-      - name: Validar resultado sin errores
-        if: ${{ success() }}
-        run: echo "Todas las pruebas fueron exitosas"
+      - name: Show environment
+        run: |
+          pipenv --python
+          pipenv graph
+
+      - name: Run tests (pytest + coverage)
+        working-directory: ./catalog-service/tests
+        run: |
+          pipenv run python -m pytest -q \
+            --junitxml=pytest.xml \
+            --cov=. --cov-report=xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-${{ matrix.python-version }}
+          path: pytest.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml-${{ matrix.python-version }}
+          path: coverage.xml
+
+
