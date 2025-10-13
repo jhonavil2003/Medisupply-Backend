@@ -5,27 +5,27 @@ from src.errors.errors import ExternalServiceError, ValidationError
 
 class IntegrationService:
     """
-    Service to integrate with external microservices (catalog and logistics).
+    Servicio para integrar con microservicios externos (catálogo y logística).
     """
     
     def __init__(self):
         self.catalog_service_url = os.getenv('CATALOG_SERVICE_URL', 'http://localhost:3001')
         self.logistics_service_url = os.getenv('LOGISTICS_SERVICE_URL', 'http://localhost:3002')
-        self.timeout = int(os.getenv('EXTERNAL_SERVICE_TIMEOUT', '3'))  # 3 seconds as per HU-102
+        self.timeout = int(os.getenv('EXTERNAL_SERVICE_TIMEOUT', '3'))  # 3 segundos según HU-102
     
     def get_product_by_sku(self, sku):
         """
-        Get product information from catalog-service.
+        Obtiene información del producto desde catalog-service.
         
         Args:
-            sku (str): Product SKU
+            sku (str): SKU del producto
             
         Returns:
-            dict: Product information
+            dict: Información del producto
             
         Raises:
-            ExternalServiceError: If catalog service is unavailable
-            ValidationError: If product is not found or inactive
+            ExternalServiceError: Si el servicio de catálogo no está disponible
+            ValidationError: Si el producto no se encuentra o está inactivo
         """
         try:
             url = f"{self.catalog_service_url}/products/{sku}"
@@ -42,7 +42,7 @@ class IntegrationService:
             
             product = response.json()
             
-            # Validate product is active
+            # Validar que el producto esté activo
             if not product.get('is_active', False):
                 raise ValidationError(
                     f"Product '{sku}' is not active",
@@ -71,19 +71,19 @@ class IntegrationService:
     
     def check_stock_availability(self, product_sku, quantity, distribution_center_code=None):
         """
-        Check stock availability in logistics-service.
+        Verifica disponibilidad de stock en logistics-service.
         
         Args:
-            product_sku (str): Product SKU
-            quantity (int): Required quantity
-            distribution_center_code (str, optional): Preferred distribution center
+            product_sku (str): SKU del producto
+            quantity (int): Cantidad requerida
+            distribution_center_code (str, optional): Centro de distribución preferido
             
         Returns:
-            dict: Stock information with availability status
+            dict: Información de stock con estado de disponibilidad
             
         Raises:
-            ExternalServiceError: If logistics service is unavailable
-            ValidationError: If insufficient stock
+            ExternalServiceError: Si el servicio de logística no está disponible
+            ValidationError: Si hay stock insuficiente
         """
         try:
             url = f"{self.logistics_service_url}/inventory/stock-levels"
@@ -102,10 +102,10 @@ class IntegrationService:
             
             stock_data = response.json()
             
-            # Calculate total available stock
+            # Calcular stock total disponible
             total_available = stock_data.get('total_available', 0)
             
-            # Check if there's enough stock
+            # Verificar si hay suficiente stock
             if total_available < quantity:
                 raise ValidationError(
                     f"Insufficient stock for product '{product_sku}'. Required: {quantity}, Available: {total_available}",
@@ -117,12 +117,12 @@ class IntegrationService:
                     }
                 )
             
-            # Find best distribution center (prefer the one with most stock or specified center)
+            # Encontrar el mejor centro de distribución (preferir el que tiene más stock o el especificado)
             distribution_centers = stock_data.get('distribution_centers', [])
             selected_center = None
             
             if distribution_center_code:
-                # Try to use preferred center
+                # Intentar usar el centro preferido
                 for center in distribution_centers:
                     if center.get('distribution_center_code') == distribution_center_code:
                         if center.get('quantity_available', 0) >= quantity:
@@ -130,7 +130,7 @@ class IntegrationService:
                             break
             
             if not selected_center and distribution_centers:
-                # Select center with most stock
+                # Seleccionar centro con mayor stock
                 distribution_centers_sorted = sorted(
                     distribution_centers,
                     key=lambda x: x.get('quantity_available', 0),
@@ -170,18 +170,18 @@ class IntegrationService:
     
     def validate_order_items(self, items, preferred_distribution_center=None):
         """
-        Validate all order items (product existence and stock availability).
+        Valida todos los items de la orden (existencia del producto y disponibilidad de stock).
         
         Args:
-            items (list): List of order items with product_sku and quantity
-            preferred_distribution_center (str, optional): Preferred distribution center
+            items (list): Lista de items de la orden con product_sku y quantity
+            preferred_distribution_center (str, optional): Centro de distribución preferido
             
         Returns:
-            list: Validated items with product info and stock confirmation
+            list: Items validados con información del producto y confirmación de stock
             
         Raises:
-            ValidationError: If any item is invalid or has insufficient stock
-            ExternalServiceError: If external services are unavailable
+            ValidationError: Si algún item es inválido o tiene stock insuficiente
+            ExternalServiceError: Si los servicios externos no están disponibles
         """
         validated_items = []
         
@@ -195,10 +195,10 @@ class IntegrationService:
             if quantity <= 0:
                 raise ValidationError(f"Invalid quantity for product '{product_sku}': {quantity}")
             
-            # Get product info from catalog
+            # Obtener información del producto desde el catálogo
             product = self.get_product_by_sku(product_sku)
             
-            # Check stock availability
+            # Verificar disponibilidad de stock
             stock_info = self.check_stock_availability(
                 product_sku,
                 quantity,

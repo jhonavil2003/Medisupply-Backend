@@ -6,11 +6,11 @@ from src.blueprints.customers import customers_bp
 from src.blueprints.orders import orders_bp
 
 
-def create_app():
+def create_app(config=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     
-    # Configuration
+    # Default configuration
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
         'DATABASE_URL',
         'postgresql://salesuser:salespass@localhost:5434/sales_db'
@@ -21,6 +21,11 @@ def create_app():
         'pool_recycle': 3600,
         'pool_pre_ping': True
     }
+    
+    if config:
+        app.config.update(config)
+        if 'sqlite' in app.config.get('SQLALCHEMY_DATABASE_URI', ''):
+            app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {}
     
     init_db(app)
     
