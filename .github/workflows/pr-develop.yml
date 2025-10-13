@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: 
       [develop]
-    
+
 concurrency:
   group: ci-pipenv-mono-${{ github.ref }}
   cancel-in-progress: true
@@ -15,10 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Ajusta versiones si tu Pipfile lo exige (p.ej. "3.9.6")
         python-version: ["3.12"]
-        # Agrega/edita rutas aquí
-        dir: ["catalog-service", "orders-service", "pricing-service"]
+        dir: ["catalog-service", "logistics-service", "sales-service"]
 
     env:
       PIPENV_VENV_IN_PROJECT: "1"
