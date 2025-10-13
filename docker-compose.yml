@@ -1,0 +1,153 @@
+version: '3.8'
+
+networks:
+  medisupply-network:
+    driver: bridge
+    name: medisupply-network
+
+services:
+  # ============================================================================
+  # CATALOG SERVICE - Gestión de productos
+  # ============================================================================
+  catalog-db:
+    image: postgres:14-alpine
+    container_name: medisupply-catalog-db
+    environment:
+      POSTGRES_USER: cataloguser
+      POSTGRES_PASSWORD: catalog_secure_password_2024
+      POSTGRES_DB: catalog_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - catalog_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cataloguser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  catalog-service:
+    build:
+      context: ./catalog-service
+      dockerfile: Dockerfile
+    container_name: medisupply-catalog-service
+    ports:
+      - "3001:3001"
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://cataloguser:catalog_secure_password_2024@catalog-db:5432/catalog_db
+      HOST: 0.0.0.0
+      PORT: 3001
+      PYTHONPATH: /app
+    depends_on:
+      catalog-db:
+        condition: service_healthy
+    volumes:
+      - ./catalog-service/src:/app/src
+    networks:
+      - medisupply-network
+    command: python -m src.main
+
+  # ============================================================================
+  # LOGISTICS SERVICE - Gestión de inventario y distribución
+  # ============================================================================
+  logistics-db:
+    image: postgres:14-alpine
+    container_name: medisupply-logistics-db
+    environment:
+      POSTGRES_USER: logisticsuser
+      POSTGRES_PASSWORD: logistics_secure_password_2024
+      POSTGRES_DB: logistics_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - logistics_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logisticsuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  logistics-service:
+    build:
+      context: ./logistics-service
+      dockerfile: Dockerfile
+    container_name: medisupply-logistics-service
+    ports:
+      - "3002:3002"
+    environment:
+      FLASK_ENV: development
+      DATABASE_URL: postgresql://logisticsuser:logistics_secure_password_2024@logistics-db:5432/logistics_db
+      HOST: 0.0.0.0
+      PORT: 3002
+      PYTHONPATH: /app
+    depends_on:
+      logistics-db:
+        condition: service_healthy
+    volumes:
+      - ./logistics-service/src:/app/src
+    networks:
+      - medisupply-network
+    command: python -m src.main
+
+  # ============================================================================
+  # SALES SERVICE
+  # ============================================================================
+  sales-db:
+    image: postgres:14-alpine
+    container_name: medisupply-sales-db
+    environment:
+      POSTGRES_USER: salesuser
+      POSTGRES_PASSWORD: sales_secure_password_2024
+      POSTGRES_DB: sales_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - sales_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salesuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  sales-service:
+    build:
+      context: ./sales-service
+      dockerfile: Dockerfile
+    container_name: medisupply-sales-service
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: postgresql://salesuser:sales_secure_password_2024@sales-db:5432/sales_db
+      SERVICE_PORT: 3003
+      FLASK_ENV: development
+      CATALOG_SERVICE_URL: http://catalog-service:3001
+      LOGISTICS_SERVICE_URL: http://logistics-service:3002
+      EXTERNAL_SERVICE_TIMEOUT: 3
+      PYTHONPATH: /app
+    depends_on:
+      sales-db:
+        condition: service_healthy
+      catalog-service:
+        condition: service_started
+      logistics-service:
+        condition: service_started
+    volumes:
+      - ./sales-service/src:/app/src
+    networks:
+      - medisupply-network
+    command: python -m src.main
+
+volumes:
+  catalog_data:
+    name: medisupply_catalog_data
+  logistics_data:
+    name: medisupply_logistics_data
+  sales_data:
+    name: medisupply_sales_data

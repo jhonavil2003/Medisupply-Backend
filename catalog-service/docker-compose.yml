@@ -15,6 +15,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - medisupply-network
 
   catalog-service:
     build: .
@@ -34,6 +36,12 @@ services:
       - ./src:/app/src
       - ./tests:/app/tests
     command: python -m src.main
+    networks:
+      - medisupply-network
 
 volumes:
   postgres_data:
+
+networks:
+  medisupply-network:
+    external: true
