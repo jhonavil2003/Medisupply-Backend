@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.9.6"]
 
     # Todas las órdenes `run:` se ejecutarán desde ./catalog-service
     defaults:
