@@ -1,0 +1,24 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-sqlalchemy = "*"
+flask-migrate = "*"
+python-dotenv = "*"
+requests = "*"
+marshmallow = "*"
+python-dateutil = "*"
+psycopg2-binary = "*"
+flask-cors = "*"
+
+[dev-packages]
+pytest = "*"
+pytest-cov = "*"
+coverage = "*"
+
+[requires]
+python_version = "3.9"
+python_full_version = "3.9.6"

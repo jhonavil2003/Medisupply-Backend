@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: medisupply-logistics-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-logisticsuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-logistics_db}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-logisticsuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  logistics-service:
+    build: .
+    container_name: medisupply-logistics-service
+    ports:
+      - "${SERVICE_PORT:-3002}:3002"
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-development}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-logisticsuser}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-logistics_db}
+      HOST: 0.0.0.0
+      PORT: 3002
+      PYTHONPATH: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+    command: python -m src.main
+    networks:
+      - medisupply-network
+
+volumes:
+  postgres_data:
+
+networks:
+  medisupply-network:
+    external: true
