@@ -54,6 +54,7 @@ jobs:
 
       # Si el cache del venv no hit, sincroniza dependencias (usa el lock)
       - name: Install deps with Pipenv
+        working-directory: ./catalog-service
         if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           if [ ! -f Pipfile.lock ]; then
