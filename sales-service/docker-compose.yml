@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    container_name: medisupply-sales-db
+    environment:
+      POSTGRES_USER: salesuser
+      POSTGRES_PASSWORD: sales_secure_password_2024
+      POSTGRES_DB: sales_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salesuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  sales-service:
+    build: .
+    container_name: medisupply-sales-service
+    ports:
+      - "3003:3003"
+    environment:
+      DATABASE_URL: postgresql://salesuser:sales_secure_password_2024@db:5432/sales_db
+      SERVICE_PORT: 3003
+      FLASK_ENV: development
+      CATALOG_SERVICE_URL: http://catalog-service:3001
+      LOGISTICS_SERVICE_URL: http://logistics-service:3002
+      EXTERNAL_SERVICE_TIMEOUT: 3
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - medisupply-network
+
+volumes:
+  postgres_data:
+
+networks:
+  medisupply-network:
+    external: true
