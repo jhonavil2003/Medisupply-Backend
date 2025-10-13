@@ -4,23 +4,19 @@ on:
   pull_request:
     branches: 
       [develop]
-      
+
 concurrency:
-  group: ci-pipenv-catalog-service-${{ github.ref }}
+  group: ci-pipenv-mono-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
+    name: "Tests • Py ${{ matrix.python-version }} • ${{ matrix.dir }}"
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Cambia a "3.9.6" si tu Pipfile/Pipfile.lock lo exige
         python-version: ["3.12"]
-
-    # Todo se ejecuta desde la subcarpeta catalog-service
-    defaults:
-      run:
-        working-directory: ./catalog-service
+        dir: ["catalog-service", "logistics-service", "sales-service"]
 
     env:
       PIPENV_VENV_IN_PROJECT: "1"
@@ -41,61 +37,67 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "pipenv>=2023.0.0"
 
-      # Cache de pip (ruedas/wheels)
+      # Cache de pip (global)
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.dir)) }}
           restore-keys: |
             pip-${{ runner.os }}-${{ matrix.python-version }}-
 
-      # Cache del entorno virtual del proyecto
-      - name: Cache .venv
+      # Cache del entorno virtual por servicio
+      - name: Cache .venv (${{ matrix.dir }})
         id: cache-venv
         uses: actions/cache@v4
         with:
-          path: catalog-service/.venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
+          path: ${{ matrix.dir }}/.venv
+          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.dir)) }}
 
-      # Vincula Pipenv al intérprete instalado por setup-python
-      - name: Bind Pipenv to runner Python
+      # Vincula Pipenv al intérprete instalado por setup-python en la carpeta del servicio
+      - name: Bind Pipenv to runner Python (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
         run: |
           pipenv --python "$(python -c 'import sys; print(sys.executable)')"
           pipenv --venv
 
-      # Instala dependencias usando el lock
-      - name: Install deps with Pipenv
+      # Instala dependencias con el lock del servicio
+      - name: Install deps with Pipenv (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
         run: |
           if [ ! -f Pipfile.lock ]; then
-            echo "::error::Falta catalog-service/Pipfile.lock. Ejecuta: (cd catalog-service && pipenv lock) y súbelo."
+            echo "::error::Falta ${{ matrix.dir }}/Pipfile.lock. Ejecuta: (cd ${{ matrix.dir }} && pipenv lock) y súbelo."
             exit 1
           fi
           pipenv sync --dev --bare --verbose
 
-      - name: Show environment
+      - name: Show environment (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
         run: |
           python --version
           pipenv --py
           pipenv --venv
           pipenv graph
 
-      - name: Run tests (pytest + coverage)
+      - name: Run tests (pytest + coverage) (${{ matrix.dir }})
+        working-directory: ${{ matrix.dir }}
         run: |
           pipenv run python -m pytest -q \
             --junitxml=pytest.xml \
             --cov=. --cov-report=xml
 
-      - name: Upload test results
+      - name: Upload test results (${{ matrix.dir }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-${{ matrix.python-version }}
-          path: catalog-service/pytest.xml
+          name: junit-${{ matrix.python-version }}-${{ matrix.dir }}
+          path: ${{ matrix.dir }}/pytest.xml
 
-      - name: Upload coverage
+      - name: Upload coverage (${{ matrix.dir }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml-${{ matrix.python-version }}
-          path: catalog-service/coverage.xml
+          name: coverage-xml-${{ matrix.python-version }}-${{ matrix.dir }}
+          path: ${{ matrix.dir }}/coverage.xml
+
+
