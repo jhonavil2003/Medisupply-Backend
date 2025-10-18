@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from src.commands.create_order import CreateOrder
 from src.commands.get_orders import GetOrders
 from src.commands.get_order_by_id import GetOrderById
+from src.commands.delete_order import DeleteOrder
 
 orders_bp = Blueprint('orders', __name__, url_prefix='/orders')
 
@@ -128,6 +129,27 @@ def get_order(order_id):
     order = command.execute()
     
     return jsonify(order), 200
+
+
+@orders_bp.route('/<int:order_id>', methods=['DELETE'])
+def delete_order(order_id):
+    """
+    Elimina una orden por ID.
+    
+    Parámetros de Path:
+        order_id (int): ID de la orden a eliminar
+    
+    Retorna:
+        200: Orden eliminada exitosamente
+        404: Orden no encontrada
+    
+    Ejemplo:
+        DELETE /orders/1
+    """
+    command = DeleteOrder(order_id)
+    result = command.execute()
+    
+    return jsonify(result), 200
 
 
 @orders_bp.route('/health', methods=['GET'])
