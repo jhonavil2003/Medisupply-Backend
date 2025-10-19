@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from src.commands.get_customers import GetCustomers
 from src.commands.get_customer_by_id import GetCustomerById
 from src.commands.create_customer import CreateCustomer
+from src.commands.validate_document import ValidateDocument
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
@@ -130,6 +131,68 @@ def get_customer(customer_id):
     customer = command.execute()
     
     return jsonify(customer), 200
+
+
+@customers_bp.route('/validate-document', methods=['GET'])
+def validate_document():
+    """
+    Valida si un número de documento (RUC/NIT) ya existe en el sistema.
+    
+    Parámetros de Query:
+        document_number (str, requerido): Número de documento a validar
+        document_type (str, opcional): Tipo de documento (por defecto: "NIT")
+    
+    Retorna:
+        200: Resultado de la validación
+        400: Parámetros faltantes o inválidos
+        500: Error interno del servidor
+    
+    Respuesta:
+        {
+            "exists": boolean,        // true si ya existe, false si está disponible
+            "customer_id": int,       // ID del cliente si existe (null si no existe)
+            "message": string         // Mensaje descriptivo
+        }
+    
+    Ejemplo de uso:
+        GET /customers/validate-document?document_number=900123456-7&document_type=NIT
+        
+        Respuesta si existe:
+        {
+            "exists": true,
+            "customer_id": 1,
+            "message": "Document NIT 900123456-7 is already registered to customer: Hospital San Juan"
+        }
+        
+        Respuesta si NO existe:
+        {
+            "exists": false,
+            "customer_id": null,
+            "message": "Document NIT 900123456-7 is available for registration"
+        }
+    """
+    try:
+        document_number = request.args.get('document_number')
+        document_type = request.args.get('document_type', 'NIT')
+        
+        if not document_number:
+            return jsonify({
+                'error': 'document_number parameter is required'
+            }), 400
+        
+        command = ValidateDocument(document_number, document_type)
+        result = command.execute()
+        
+        return jsonify(result), 200
+        
+    except ValueError as e:
+        return jsonify({
+            'error': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'error': str(e)
+        }), 500
 
 
 @customers_bp.route('/health', methods=['GET'])
