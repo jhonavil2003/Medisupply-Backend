@@ -43,7 +43,7 @@ def create_app(config=None):
         return jsonify({
             'status': 'healthy',
             'service': 'catalog-service',
-            'database': 'connected' if db.engine else 'disconnected'
+            'database': 'connectedd' if db.engine else 'disconnected'
         }), 200
     
     with app.app_context():
