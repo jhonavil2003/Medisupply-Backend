@@ -174,6 +174,41 @@ Obtener detalle completo de un pedido.
 curl http://localhost:3003/orders/1
 ```
 
+#### DELETE /orders/{id}
+Eliminar una orden por ID.
+
+**Path Parameters:**
+- `id` (requerido): ID de la orden a eliminar
+
+**Respuesta Exitosa (200):**
+```json
+{
+  "message": "Order ORD-20251017-0001 deleted successfully",
+  "deleted_order": {
+    "id": 1,
+    "order_number": "ORD-20251017-0001",
+    "customer_id": 1,
+    "seller_id": "SELLER-002",
+    "status": "pending",
+    "total_amount": 5.62
+  }
+}
+```
+
+**Errores posibles:**
+- `404` - Orden no encontrada
+
+**Ejemplo:**
+```bash
+# Eliminar orden con ID 1
+curl -X DELETE http://localhost:3003/orders/1
+
+# Con respuesta formateada
+curl -X DELETE http://localhost:3003/orders/1 | python3 -m json.tool
+```
+
+**Nota:** La eliminación es en cascada, por lo que también se eliminarán todos los ítems relacionados con la orden.
+
 
 
 ##  Testing

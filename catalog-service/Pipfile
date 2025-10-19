@@ -4,20 +4,22 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-flask = "*"
-flask-sqlalchemy = "*"
-flask-migrate = "*"
-python-dotenv = "*"
-requests = "*"
-marshmallow = "*"
-python-dateutil = "*"
-psycopg2-binary = "*"
-flask-cors = "*"
+flask = "==3.0.0"
+flask-sqlalchemy = "==3.1.1"
+flask-migrate = "==4.0.5"
+python-dotenv = "==1.0.0"
+requests = "==2.31.0"
+marshmallow = "==3.20.1"
+python-dateutil = "==2.8.2"
+psycopg2-binary = "==2.9.9"
+flask-cors = "==4.0.0"
+click = "==8.1.7"
+sqlalchemy = "==2.0.23"
 
 [dev-packages]
-pytest = "*"
-pytest-cov = "*"
-coverage = "*"
+pytest = "==8.4.2"
+pytest-cov = "==7.0.0"
+pytest-mock = "==3.12.0"
 
 [requires]
 python_version = "3.9"

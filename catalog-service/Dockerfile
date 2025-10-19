@@ -7,10 +7,11 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY Pipfile Pipfile.lock ./
+COPY Pipfile ./
 
 RUN pip install --no-cache-dir pipenv && \
-    pipenv install --deploy --system --ignore-pipfile
+    pipenv lock && \
+    pipenv install --system --deploy
 
 COPY . .
 
