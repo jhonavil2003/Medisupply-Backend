@@ -145,6 +145,13 @@ class CreateOrder:
     def _create_order_items(self, order, validated_items):
         """Create order item records."""
         for item_data in validated_items:
+            # Use item's distribution center or fall back to order's preferred center
+            distribution_center = (
+                item_data.get('distribution_center_code') or 
+                order.preferred_distribution_center or 
+                'CEDIS-BOG'  # Default fallback
+            )
+            
             order_item = OrderItem(
                 order_id=order.id,
                 product_sku=item_data['product_sku'],
@@ -153,7 +160,7 @@ class CreateOrder:
                 unit_price=item_data['unit_price'],
                 discount_percentage=item_data.get('discount_percentage', 0.0),
                 tax_percentage=item_data.get('tax_percentage', 19.0),
-                distribution_center_code=item_data.get('distribution_center_code'),
+                distribution_center_code=distribution_center,
                 stock_confirmed=item_data.get('stock_confirmed', False),
                 stock_confirmation_date=datetime.utcnow()
             )

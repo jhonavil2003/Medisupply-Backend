@@ -45,9 +45,9 @@ class OrderItem(db.Model):
             'tax_amount': float(self.tax_amount) if self.tax_amount else 0.0,
             'subtotal': float(self.subtotal) if self.subtotal else 0.0,
             'total': float(self.total) if self.total else 0.0,
-            'distribution_center_code': self.distribution_center_code,
+            'distribution_center_code': self.distribution_center_code or 'CEDIS-BOG',
             'stock_confirmed': self.stock_confirmed,
-            'stock_confirmation_date': self.stock_confirmation_date.isoformat() if self.stock_confirmation_date else None,
+            'stock_confirmation_date': self.stock_confirmation_date.isoformat() if self.stock_confirmation_date else '',
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
     

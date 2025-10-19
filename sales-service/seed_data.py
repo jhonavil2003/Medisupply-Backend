@@ -1,15 +1,18 @@
 """
 Seed data script for sales-service development database.
-Creates sample customers for testing.
+Creates sample customers and orders for testing.
 """
 import os
 import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from src.main import create_app
 from src.session import db
 from src.models.customer import Customer
+from src.models.order import Order
+from src.models.order_item import OrderItem
 
 
 def seed_customers():
@@ -112,6 +115,134 @@ def seed_customers():
     return customers
 
 
+def seed_orders(customers):
+    """Create sample orders with order items."""
+    print("📦 Creando órdenes...")
+    
+    # Order configurations with complete data
+    orders_data = [
+        {
+            "order_number": "ORD-2024-001",
+            "seller_id": "SELLER-001",
+            "customer": customers[0],
+            "delivery_address": "Calle 100 #15-20",
+            "delivery_city": "Bogotá",
+            "delivery_department": "Cundinamarca",
+            "preferred_distribution_center": "CEDIS-BOG",
+            "payment_method": "Crédito 30 días",
+            "notes": "Entrega urgente - Hospital principal",
+            "days_offset": 0
+        },
+        {
+            "order_number": "ORD-2024-002",
+            "seller_id": "SELLER-002",
+            "customer": customers[1],
+            "delivery_address": "Carrera 50 #70-80",
+            "delivery_city": "Medellín",
+            "delivery_department": "Antioquia",
+            "preferred_distribution_center": "CEDIS-MED",
+            "payment_method": "Contado",
+            "notes": "Verificar certificados antes de envío",
+            "days_offset": 1
+        },
+        {
+            "order_number": "ORD-2024-003",
+            "seller_id": "SELLER-001",
+            "customer": customers[2],
+            "delivery_address": "Avenida 6 Norte #25-30",
+            "delivery_city": "Cali",
+            "delivery_department": "Valle del Cauca",
+            "preferred_distribution_center": "CEDIS-CALI",
+            "payment_method": "Crédito 60 días",
+            "notes": "Cliente preferencial - máxima prioridad",
+            "days_offset": 2
+        },
+        {
+            "order_number": "ORD-2024-004",
+            "seller_id": "SELLER-003",
+            "customer": customers[3],
+            "delivery_address": "Calle 85 #48-10",
+            "delivery_city": "Barranquilla",
+            "delivery_department": "Atlántico",
+            "preferred_distribution_center": "CEDIS-BAQ",
+            "payment_method": "Crédito 30 días",
+            "notes": "Requiere factura electrónica",
+            "days_offset": 3
+        },
+        {
+            "order_number": "ORD-2024-005",
+            "seller_id": "SELLER-002",
+            "customer": customers[4],
+            "delivery_address": "Carrera 27 #10-20",
+            "delivery_city": "Bucaramanga",
+            "delivery_department": "Santander",
+            "preferred_distribution_center": "CEDIS-BOG",
+            "payment_method": "Contado",
+            "notes": "Primera orden del cliente - seguimiento especial",
+            "days_offset": 4
+        }
+    ]
+    
+    orders_created = []
+    for order_data in orders_data:
+        # Create order date (spreading orders over 5 days)
+        order_date = datetime.now() - timedelta(days=order_data["days_offset"])
+        
+        # Create order
+        order = Order(
+            order_number=order_data["order_number"],
+            order_date=order_date,
+            seller_id=order_data["seller_id"],
+            customer_id=order_data["customer"].id,
+            delivery_address=order_data["delivery_address"],
+            delivery_city=order_data["delivery_city"],
+            delivery_department=order_data["delivery_department"],
+            preferred_distribution_center=order_data["preferred_distribution_center"],
+            payment_method=order_data["payment_method"],
+            notes=order_data["notes"],
+            subtotal=0.0,
+            discount_amount=0.0,
+            tax_amount=0.0,
+            total_amount=0.0
+        )
+        
+        # Add order item with product JER-001 (Jeringa)
+        quantity = 50
+        unit_price = 1500.0
+        item_subtotal = quantity * unit_price
+        item_discount = item_subtotal * 0.05  # 5% discount
+        item_after_discount = item_subtotal - item_discount
+        item_tax = item_after_discount * 0.19  # 19% IVA
+        item_total = item_after_discount + item_tax
+        
+        order_item = OrderItem(
+            product_sku="JER-001",
+            product_name="Jeringa desechable 5ml",
+            quantity=quantity,
+            unit_price=unit_price,
+            discount_percentage=5.0,
+            discount_amount=item_discount,
+            tax_percentage=19.0,
+            tax_amount=item_tax,
+            subtotal=item_after_discount,
+            total=item_total,
+            distribution_center_code=order_data["preferred_distribution_center"]
+        )
+        order.items.append(order_item)
+        
+        # Update order totals
+        order.subtotal = item_subtotal
+        order.discount_amount = item_discount
+        order.tax_amount = item_tax
+        order.total_amount = item_total
+        
+        db.session.add(order)
+        orders_created.append(order)
+    
+    db.session.commit()
+    return orders_created
+
+
 def main():
     """Main function to seed the database."""
     print("🌱 Iniciando seed de datos...")
@@ -128,8 +259,13 @@ def main():
         customers = seed_customers()
         print(f"✅ Creados {len(customers)} clientes")
         
+        # Seed orders
+        orders = seed_orders(customers)
+        print(f"✅ Creadas {len(orders)} órdenes")
+        
         print("\n📊 Resumen de datos:")
         print(f"  Clientes: {len(customers)}")
+        print(f"  Órdenes: {len(orders)}")
         print("\n✅ Seed completado exitosamente!")
 
 

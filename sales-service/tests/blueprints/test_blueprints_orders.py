@@ -100,3 +100,45 @@ class TestOrdersBlueprint:
         assert data['service'] == 'sales-service'
         assert data['module'] == 'orders'
         assert 'version' in data
+    
+    def test_delete_order_success(self, client, sample_order):
+        """Test DELETE /orders/<id> - successful deletion."""
+        response = client.delete(f'/orders/{sample_order.id}')
+        
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert 'message' in data
+        assert 'deleted_order' in data
+        assert sample_order.order_number in data['message']
+        assert data['deleted_order']['id'] == sample_order.id
+        
+        # Verify the order is deleted
+        get_response = client.get(f'/orders/{sample_order.id}')
+        assert get_response.status_code == 404
+    
+    def test_delete_order_not_found(self, client):
+        """Test DELETE /orders/<id> with non-existent ID."""
+        response = client.delete('/orders/99999')
+        
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert 'error' in data
+        assert 'not found' in data['error'].lower()
+    
+    def test_delete_order_removes_items(self, client, sample_order):
+        """Test DELETE /orders/<id> also removes order items."""
+        order_id = sample_order.id
+        
+        # Get order first to verify it has items
+        get_response = client.get(f'/orders/{order_id}')
+        assert get_response.status_code == 200
+        order_data = json.loads(get_response.data)
+        assert len(order_data['items']) >= 2
+        
+        # Delete the order
+        delete_response = client.delete(f'/orders/{order_id}')
+        assert delete_response.status_code == 200
+        
+        # Verify order is gone
+        verify_response = client.get(f'/orders/{order_id}')
+        assert verify_response.status_code == 404
