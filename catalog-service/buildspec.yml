@@ -9,7 +9,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t medisupply/catalog-service .
+      - docker build -t medisupply/catalog-service catalog-service
       - docker tag medisupply/catalog-service:latest 713843767123.dkr.ecr.us-east-1.amazonaws.com/medisupply/catalog-service:latest
   post_build:
     commands:
