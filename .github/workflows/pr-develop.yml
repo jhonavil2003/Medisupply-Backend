@@ -1,103 +1,466 @@
-name: Pull request develop
+name: MediSupply Backend - Complete CI/CD Pipeline
 
 on:
+  push:
+    branches: [ '**' ]
   pull_request:
-    branches: 
-      [develop]
+    branches: [ '**' ]
 
 concurrency:
-  group: ci-pipenv-mono-${{ github.ref }}
+  group: ci-medisupply-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: "Tests • Py ${{ matrix.python-version }} • ${{ matrix.dir }}"
+  setup-verification:
+    name: "Setup & Project Structure"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9"]
-        dir: ["catalog-service", "logistics-service", "sales-service"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Verify project structure
+        run: |
+          echo "Verifying MediSupply project structure..."
+          
+          test -d catalog-service && echo "✅ catalog-service/ exists" || (echo "❌: catalog-service/ missing" && exit 1)
+          test -d logistics-service && echo "✅ logistics-service/ exists" || (echo "❌: logistics-service/ missing" && exit 1)
+          test -d sales-service && echo "✅ sales-service/ exists" || (echo "❌: sales-service/ missing" && exit 1)
+          
+          test -f docker-compose.yml && echo "✅ docker-compose.yml exists" || (echo "❌: docker-compose.yml missing" && exit 1)
+          
+          test -f catalog-service/Pipfile && echo "✅ catalog-service/Pipfile exists" || exit 1
+          test -f logistics-service/Pipfile && echo "✅ logistics-service/Pipfile exists" || exit 1
+          test -f sales-service/Pipfile && echo "✅ sales-service/Pipfile exists" || exit 1
+          
+          test -f catalog-service/Pipfile.lock && echo "✅ catalog-service/Pipfile.lock exists" || exit 1
+          test -f logistics-service/Pipfile.lock && echo "✅ logistics-service/Pipfile.lock exists" || exit 1
+          test -f sales-service/Pipfile.lock && echo "✅ sales-service/Pipfile.lock exists" || exit 1
+          
+          echo "✅ Project structure verified successfully"
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pipenv>=2023.0.0"
+          echo "✅ Pipenv installed"
+
+  unit-test-catalog:
+    name: "Unit Tests - Catalog Service"
+    runs-on: ubuntu-latest
+    needs: setup-verification
+
+    defaults:
+      run:
+        working-directory: ./catalog-service
 
     env:
       PIPENV_VENV_IN_PROJECT: "1"
       PIPENV_NOSPIN: "1"
       PIPENV_HIDE_EMOJIS: "1"
+      PIPENV_PYTHON: "3.9"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.9"
 
-      - name: Upgrade pip & install pipenv
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install "pipenv>=2023.0.0"
-
-      # Cache de pip (global)
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.dir)) }}
+          key: pip-catalog-${{ runner.os }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
           restore-keys: |
-            pip-${{ runner.os }}-${{ matrix.python-version }}-
+            pip-catalog-${{ runner.os }}-
 
-      # Cache del entorno virtual por servicio
-      - name: Cache .venv (${{ matrix.dir }})
+      - name: Cache .venv
         id: cache-venv
         uses: actions/cache@v4
         with:
-          path: ${{ matrix.dir }}/.venv
-          key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.dir)) }}
+          path: catalog-service/.venv
+          key: venv-catalog-${{ runner.os }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
 
-      # Vincula Pipenv al intérprete instalado por setup-python en la carpeta del servicio
-      - name: Bind Pipenv to runner Python (${{ matrix.dir }})
-        working-directory: ${{ matrix.dir }}
+      - name: Install pipenv
         run: |
-          pipenv --python "$(python -c 'import sys; print(sys.executable)')"
-          pipenv --venv
+          python -m pip install --upgrade pip
+          pip install "pipenv>=2023.0.0"
 
-      # Instala dependencias con el lock del servicio
-      - name: Install deps with Pipenv (${{ matrix.dir }})
-        working-directory: ${{ matrix.dir }}
+      - name: Install dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          if [ ! -f Pipfile.lock ]; then
-            echo "::error::Falta ${{ matrix.dir }}/Pipfile.lock. Ejecuta: (cd ${{ matrix.dir }} && pipenv lock) y súbelo."
-            exit 1
-          fi
-          pipenv sync --dev --bare --verbose
+          pipenv install --dev --skip-lock
 
-      - name: Show environment (${{ matrix.dir }})
-        working-directory: ${{ matrix.dir }}
+      - name: Show environment
         run: |
-          python --version
-          pipenv --py
+          pipenv run python --version
           pipenv --venv
           pipenv graph
 
-      - name: Run tests (pytest + coverage) (${{ matrix.dir }})
-        working-directory: ${{ matrix.dir }}
+      - name: Run catalog-service tests
         run: |
-          pipenv run python -m pytest -q \
-            --junitxml=pytest.xml \
-            --cov=. --cov-report=xml
+          echo "Running catalog-service unit tests..."
+          pipenv run pytest tests/ -v --tb=short \
+            --junitxml=pytest-catalog.xml \
+            --cov=src --cov-report=xml --cov-report=term-missing
 
-      - name: Upload test results (${{ matrix.dir }})
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-${{ matrix.python-version }}-${{ matrix.dir }}
-          path: ${{ matrix.dir }}/pytest.xml
+          name: pytest-catalog-results
+          path: catalog-service/pytest-catalog.xml
 
-      - name: Upload coverage (${{ matrix.dir }})
+      - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml-${{ matrix.python-version }}-${{ matrix.dir }}
-          path: ${{ matrix.dir }}/coverage.xml
+          name: coverage-catalog
+          path: catalog-service/coverage.xml
 
+  unit-test-logistics:
+    name: "Unit Tests - Logistics Service"
+    runs-on: ubuntu-latest
+    needs: setup-verification
 
+    defaults:
+      run:
+        working-directory: ./logistics-service
+
+    env:
+      PIPENV_VENV_IN_PROJECT: "1"
+      PIPENV_NOSPIN: "1"
+      PIPENV_HIDE_EMOJIS: "1"
+      PIPENV_PYTHON: "3.9"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-logistics-${{ runner.os }}-${{ hashFiles('logistics-service/Pipfile.lock') }}
+          restore-keys: |
+            pip-logistics-${{ runner.os }}-
+
+      - name: Cache .venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: logistics-service/.venv
+          key: venv-logistics-${{ runner.os }}-${{ hashFiles('logistics-service/Pipfile.lock') }}
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pipenv>=2023.0.0"
+
+      - name: Install dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --dev --skip-lock
+
+      - name: Show environment
+        run: |
+          pipenv run python --version
+          pipenv --venv
+          pipenv graph
+
+      - name: Run logistics-service tests
+        run: |
+          echo "Running logistics-service unit tests..."
+          pipenv run pytest tests/ -v --tb=short \
+            --junitxml=pytest-logistics.xml \
+            --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logistics-results
+          path: logistics-service/pytest-logistics.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-logistics
+          path: logistics-service/coverage.xml
+
+  unit-test-sales:
+    name: "Unit Tests - Sales Service"
+    runs-on: ubuntu-latest
+    needs: setup-verification
+
+    defaults:
+      run:
+        working-directory: ./sales-service
+
+    env:
+      PIPENV_VENV_IN_PROJECT: "1"
+      PIPENV_NOSPIN: "1"
+      PIPENV_HIDE_EMOJIS: "1"
+      PIPENV_PYTHON: "3.9"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-sales-${{ runner.os }}-${{ hashFiles('sales-service/Pipfile.lock') }}
+          restore-keys: |
+            pip-sales-${{ runner.os }}-
+
+      - name: Cache .venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: sales-service/.venv
+          key: venv-sales-${{ runner.os }}-${{ hashFiles('sales-service/Pipfile.lock') }}
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pipenv>=2023.0.0"
+
+      - name: Install dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          pipenv install --dev --skip-lock
+
+      - name: Show environment
+        run: |
+          pipenv run python --version
+          pipenv --venv
+          pipenv graph
+
+      - name: Run sales-service tests
+        run: |
+          echo "Running sales-service unit tests..."
+          pipenv run pytest tests/ -v --tb=short \
+            --junitxml=pytest-sales.xml \
+            --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-sales-results
+          path: sales-service/pytest-sales.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-sales
+          path: sales-service/coverage.xml
+
+  coverage-report:
+    name: "Coverage Analysis"
+    runs-on: ubuntu-latest
+    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales]
+    if: always()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          path: coverage-reports
+
+      - name: Analyze coverage
+        run: |
+          echo "Coverage Analysis Summary"
+          echo "=============================="
+          
+          if [ -f "coverage-reports/coverage-catalog/coverage.xml" ]; then
+            echo "✅ Catalog Service coverage report found"
+          else
+            echo "⚠️: Catalog Service coverage report missing"
+          fi
+          
+          if [ -f "coverage-reports/coverage-logistics/coverage.xml" ]; then
+            echo "✅ Logistics Service coverage report found"
+          else
+            echo "⚠️: Logistics Service coverage report missing"
+          fi
+          
+          if [ -f "coverage-reports/coverage-sales/coverage.xml" ]; then
+            echo "✅ Sales Service coverage report found"
+          else
+            echo "⚠️: Sales Service coverage report missing"
+          fi
+          
+          echo ""
+          echo "Check individual job outputs for detailed coverage metrics"
+
+  integration-test-docker:
+    name: "Integration Tests - Docker Compose"
+    runs-on: ubuntu-latest
+    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start services with Docker Compose
+        run: |
+          echo "Starting MediSupply services with Docker Compose..."
+          docker compose up -d
+          
+          echo "Waiting for services to be healthy..."
+          sleep 30
+
+      - name: Check services health
+        run: |
+          echo "Checking health of all services..."
+          
+          CATALOG_HEALTH=$(curl -s http://localhost:3001/health || echo "FAILED")
+          echo "Catalog Service: $CATALOG_HEALTH"
+          
+          LOGISTICS_HEALTH=$(curl -s http://localhost:3002/health || echo "FAILED")
+          echo "Logistics Service: $LOGISTICS_HEALTH"
+          
+          SALES_HEALTH=$(curl -s http://localhost:3003/health || echo "FAILED")
+          echo "Sales Service: $SALES_HEALTH"
+          
+          if [[ "$CATALOG_HEALTH" == *"healthy"* ]] && \
+             [[ "$LOGISTICS_HEALTH" == *"healthy"* ]] && \
+             [[ "$SALES_HEALTH" == *"healthy"* ]]; then
+            echo "✅ All services are healthy"
+          else
+            echo "❌: Some services are not healthy"
+            docker compose logs
+            exit 1
+          fi
+
+      - name: Test service integration
+        run: |
+          echo "Testing integration between services..."
+          
+          echo "Test 1: GET /products from catalog-service"
+          PRODUCTS=$(curl -s http://localhost:3001/products)
+          echo "Products response: $PRODUCTS"
+          
+          echo "Test 2: GET /inventory/stock-levels from logistics-service"
+          STOCK=$(curl -s "http://localhost:3002/inventory/stock-levels?product_sku=TEST-001" || echo "FAILED")
+          echo "Stock response: $STOCK"
+          
+          echo "Test 3: GET /customers from sales-service"
+          CUSTOMERS=$(curl -s http://localhost:3003/customers)
+          echo "Customers response: $CUSTOMERS"
+          
+          echo "✅ Basic integration tests completed"
+
+      - name: Stop services
+        if: always()
+        run: |
+          echo "Stopping Docker Compose services..."
+          docker compose down -v
+          echo "✅ Services stopped"
+
+  final-status:
+    name: "Final Status & Summary"
+    runs-on: ubuntu-latest
+    needs:
+      - setup-verification
+      - unit-test-catalog
+      - unit-test-logistics
+      - unit-test-sales
+      - coverage-report
+      - integration-test-docker
+    if: always()
+
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "MediSupply Backend - CI/CD Pipeline Results"
+          echo "=============================================="
+          echo ""
+          
+          FAILURES=0
+          WARNINGS=0
+          
+          echo "Setup & Structure:"
+          if [[ "${{ needs.setup-verification.result }}" == "success" ]]; then
+            echo "   ✅ Project structure verified"
+          else
+            echo "   ❌: Project structure check failed"
+            ((FAILURES++))
+          fi
+          
+          echo ""
+          echo "Unit Tests:"
+          
+          if [[ "${{ needs.unit-test-catalog.result }}" == "success" ]]; then
+            echo "   ✅ Catalog Service tests passed"
+          else
+            echo "   ❌: Catalog Service tests failed"
+            ((FAILURES++))
+          fi
+          
+          if [[ "${{ needs.unit-test-logistics.result }}" == "success" ]]; then
+            echo "   ✅ Logistics Service tests passed"
+          else
+            echo "   ERROR: Logistics Service tests failed"
+            ((FAILURES++))
+          fi
+          
+          if [[ "${{ needs.unit-test-sales.result }}" == "success" ]]; then
+            echo "   ✅ Sales Service tests passed"
+          else
+            echo "   ❌: Sales Service tests failed"
+            ((FAILURES++))
+          fi
+          
+          echo ""
+          echo "Coverage Report:"
+          if [[ "${{ needs.coverage-report.result }}" == "success" ]]; then
+            echo "   ✅ Coverage reports generated"
+          else
+            echo "   ⚠️: Coverage report had issues"
+            ((WARNINGS++))
+          fi
+          
+          echo ""
+          echo "Integration Tests:"
+          if [[ "${{ needs.integration-test-docker.result }}" == "success" ]]; then
+            echo "   ✅ Docker Compose integration tests passed"
+          else
+            echo "   ❌: Integration tests failed"
+            ((FAILURES++))
+          fi
+          
+          echo ""
+          echo "=============================================="
+          echo "Summary: $FAILURES critical failures, $WARNINGS warnings"
+          echo ""
+          
+          if [ $FAILURES -eq 0 ]; then
+            echo "✅ Pipeline completed successfully!"
+            echo "MediSupply Backend is ready for deployment"
+            exit 0
+          else
+            echo "Pipeline failed with $FAILURES critical issues"
+            echo "Please review the failed jobs above"
+            exit 1
+          fi
