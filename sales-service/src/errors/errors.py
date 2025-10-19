@@ -10,6 +10,9 @@ class ApiError(Exception):
         self.status_code = status_code
         self.payload = payload
     
+    def __str__(self):
+        return self.message
+    
     def to_dict(self):
         rv = dict(self.payload or ())
         rv['error'] = self.message
