@@ -85,5 +85,3 @@ Health check del microservicio.
 pipenv run pytest tests/ -v --cov=src --cov-report=term-missing
 ```
 
-.
-
