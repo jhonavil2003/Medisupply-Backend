@@ -54,6 +54,7 @@ jobs:
       logistics-service: ${{ steps.changes.outputs.logistics-service }}
       sales-service: ${{ steps.changes.outputs.sales-service }}
       matrix: ${{ steps.mk.outputs.matrix }}
+      has-changes: ${{ steps.mk.outputs.has-changes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,14 +63,14 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            sales_service:
+            catalog-service:
+              - 'catalog-service/**'
+            logistics-service:
+              - 'logistics-service/**'
+            sales-service:
               - 'sales-service/**'
-            booking_service:
-              - 'booking-service/**'
-            payments_service:
-              - 'payments-service/**'
             shared:
-              - 'shared/**'
+              - '*/**'
       - id: mk
         run: |
           list=()
@@ -82,8 +83,10 @@ jobs:
           fi
           if [ ${#list[@]} -eq 0 ]; then
             echo 'matrix={"service":[]}' >> $GITHUB_OUTPUT
+            echo 'has-changes=false' >> $GITHUB_OUTPUT
           else
             echo "matrix={\"service\":[${list[*]}]}" >> $GITHUB_OUTPUT
+            echo 'has-changes=true' >> $GITHUB_OUTPUT
           fi
 
   unit-test-catalog:
