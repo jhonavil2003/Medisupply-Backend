@@ -76,3 +76,4 @@ curl http://localhost:3001/products
 # Buscar por SKU
 curl http://localhost:3001/products/JER-001
 ```
+.
