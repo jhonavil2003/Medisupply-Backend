@@ -55,8 +55,6 @@ jobs:
       catalog-service: ${{ steps.changes.outputs.catalog-service }}
       logistics-service: ${{ steps.changes.outputs.logistics-service }}
       sales-service: ${{ steps.changes.outputs.sales-service }}
-      matrix: ${{ steps.mk.outputs.matrix }}
-      has-changes: ${{ steps.mk.outputs.has-changes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,32 +69,16 @@ jobs:
               - 'logistics-service/**'
             sales-service:
               - 'sales-service/**'
-      - id: mk
-        run: |
-          list=()
-          [ "${{ steps.changes.outputs.catalog-service }}" = "true" ] && list+=("\"catalog-service\"")
-          [ "${{ steps.changes.outputs.logistics-service }}" = "true" ] && list+=("\"logistics-service\"")
-          [ "${{ steps.changes.outputs.sales-service }}" = "true" ] && list+=("\"sales-service\"")
-          if [ ${#list[@]} -eq 0 ]; then
-            echo 'matrix={"service":[]}' >> $GITHUB_OUTPUT
-            echo 'has-changes=false' >> $GITHUB_OUTPUT
-          else
-            echo "matrix={\"service\":[${list[*]}]}" >> $GITHUB_OUTPUT
-            echo 'has-changes=true' >> $GITHUB_OUTPUT
-          fi
 
   unit-test-catalog:
     name: "Unit Tests - Catalog Service"
     needs: [setup-verification, detectar-cambios]
-    if: ${{ needs.detectar-cambios.result == 'success' && needs.detectar-cambios.outputs.has-changes == 'true' }}
+    if: ${{ needs.detectar-cambios.outputs.catalog-service == 'true'}}
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.detectar-cambios.outputs.matrix) }}
-      fail-fast: false
 
     defaults:
       run:
-        working-directory: ./${{ matrix.service }}
+        working-directory: ./catalog-service
 
     env:
       PIPENV_VENV_IN_PROJECT: "1"
@@ -115,9 +97,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ matrix.service }}-${{ runner.os }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.service)) }}
+          key: pip-catalog-${{ runner.os }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
           restore-keys: |
-            pip-${{ matrix.service }}-${{ runner.os }}-
+            pip-catalog-${{ runner.os }}-
 
       - name: Install pipenv
         run: |
@@ -141,32 +123,32 @@ jobs:
             pipenv install --dev --skip-lock
           fi
 
-      - name: Run tests
+      - name: Run catalog-service tests
         run: |
-          echo "Running ${{ matrix.service }} unit tests..."
+          echo "Running catalog-service unit tests..."
           pipenv run pytest tests/ -v --tb=short \
-            --junitxml=pytest-${{ matrix.service }}.xml \
+            --junitxml=pytest-catalog.xml \
             --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-${{ matrix.service }}-results
-          path: ${{ matrix.service }}/pytest-${{ matrix.service }}.xml
+          name: pytest-catalog-results
+          path: catalog-service/pytest-catalog.xml
 
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.service }}
-          path: ${{ matrix.service }}/coverage.xml
+          name: coverage-catalog
+          path: catalog-service/coverage.xml
 
   unit-test-logistics:
-    name: "Unit Tests - Logistics Service (Legacy)"
+    name: "Unit Tests - Logistics Service"
     runs-on: ubuntu-latest
     needs: [setup-verification, detectar-cambios]
-    if: ${{ needs.detectar-cambios.outputs.has-changes == 'false' }}
+    if: ${{ needs.detectar-cambios.outputs.logistics-service == 'true'}}
 
     defaults:
       run:
@@ -237,10 +219,10 @@ jobs:
           path: logistics-service/coverage.xml
 
   unit-test-sales:
-    name: "Unit Tests - Sales Service (Legacy)"
+    name: "Unit Tests - Sales Service"
     runs-on: ubuntu-latest
     needs: [setup-verification, detectar-cambios]
-    if: ${{ needs.detectar-cambios.outputs.has-changes == 'false' }}
+    if: ${{ needs.detectar-cambios.outputs.sales-service == 'true'}}
 
     defaults:
       run:
