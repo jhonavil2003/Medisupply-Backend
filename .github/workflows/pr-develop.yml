@@ -48,6 +48,8 @@ jobs:
           echo "✅ Pipenv installed"
 
   detectar-cambios:
+    name: "Changes Detection"
+    needs: [setup-verification]
     runs-on: ubuntu-latest
     outputs:
       catalog-service: ${{ steps.changes.outputs.catalog-service }}
