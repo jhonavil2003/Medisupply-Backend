@@ -10,6 +10,9 @@ RUN pipenv install --system --deploy
 
 COPY . .
 
+EXPOSE 3003
+
+ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
 CMD ["python", "-m", "src.main"]
