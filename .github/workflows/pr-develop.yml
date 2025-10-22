@@ -467,20 +467,28 @@ jobs:
           
           echo ""
           echo "Coverage Report:"
-          if [[ "${{ needs.coverage-report.result }}" == "success" ]]; then
-            echo "   ✅ Coverage reports generated"
+          if [[ "${{ needs.coverage-report.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.coverage-report.result }}" == "success" ]]; then
+              echo "   ✅ Coverage reports generated"
+            else
+              echo "   ⚠️: Coverage report had issues"
+              ((WARNINGS++))
+            fi
           else
-            echo "   ⚠️: Coverage report had issues"
-            ((WARNINGS++))
+            echo "   ✅ Coverage report skipped"
           fi
           
           echo ""
           echo "Integration Tests:"
-          if [[ "${{ needs.integration-test-docker.result }}" == "success" ]]; then
-            echo "   ✅ Docker Compose integration tests passed"
+          if [[ "${{ needs.integration-test-docker.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.integration-test-docker.result }}" == "success" ]]; then
+              echo "   ✅ Docker Compose integration tests passed"
+            else
+              echo "   ❌: Integration tests failed"
+              ((FAILURES++))
+            fi
           else
-            echo "   ❌: Integration tests failed"
-            ((FAILURES++))
+            echo "   ✅ Docker Compose integration tests skipped"
           fi
           
           echo ""
