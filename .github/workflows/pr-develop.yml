@@ -79,20 +79,12 @@ jobs:
           restore-keys: |
             pip-catalog-${{ runner.os }}-
 
-      - name: Cache .venv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: catalog-service/.venv
-          key: venv-catalog-${{ runner.os }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
-
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pip
           pip install "pipenv>=2023.0.0"
 
       - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --skip-lock
 
