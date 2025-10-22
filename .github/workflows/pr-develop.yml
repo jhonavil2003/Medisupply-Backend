@@ -102,6 +102,13 @@ jobs:
           pipenv --venv
           pipenv graph
 
+      - name: Ensure pytest is available
+        run: |
+          if [ ! -f .venv/bin/pytest ]; then
+            echo ".venv/bin/pytest missing, reinstalling dependencies..."
+            pipenv install --dev --skip-lock
+          fi
+
       - name: Run catalog-service tests
         run: |
           echo "Running catalog-service unit tests..."
@@ -176,6 +183,13 @@ jobs:
           pipenv --venv
           pipenv graph
 
+      - name: Ensure pytest is available
+        run: |
+          if [ ! -f .venv/bin/pytest ]; then
+            echo ".venv/bin/pytest missing, reinstalling dependencies..."
+            pipenv install --dev --skip-lock
+          fi
+
       - name: Run logistics-service tests
         run: |
           echo "Running logistics-service unit tests..."
@@ -249,6 +263,13 @@ jobs:
           pipenv run python --version
           pipenv --venv
           pipenv graph
+
+      - name: Ensure pytest is available
+        run: |
+          if [ ! -f .venv/bin/pytest ]; then
+            echo ".venv/bin/pytest missing, reinstalling dependencies..."
+            pipenv install --dev --skip-lock
+          fi
 
       - name: Run sales-service tests
         run: |
