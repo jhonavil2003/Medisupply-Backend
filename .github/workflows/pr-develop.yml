@@ -16,10 +16,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Verify project structure
         run: |
@@ -84,14 +84,14 @@ jobs:
       PIPENV_VENV_IN_PROJECT: "1"
       PIPENV_NOSPIN: "1"
       PIPENV_HIDE_EMOJIS: "1"
-      PIPENV_PYTHON: "3.9"
+      PIPENV_PYTHON: "3.12"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -158,14 +158,14 @@ jobs:
       PIPENV_VENV_IN_PROJECT: "1"
       PIPENV_NOSPIN: "1"
       PIPENV_HIDE_EMOJIS: "1"
-      PIPENV_PYTHON: "3.9"
+      PIPENV_PYTHON: "3.12"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -232,14 +232,14 @@ jobs:
       PIPENV_VENV_IN_PROJECT: "1"
       PIPENV_NOSPIN: "1"
       PIPENV_HIDE_EMOJIS: "1"
-      PIPENV_PYTHON: "3.9"
+      PIPENV_PYTHON: "3.12"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.12"
 
       - name: Cache pip
         uses: actions/cache@v4

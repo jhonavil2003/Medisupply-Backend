@@ -29,7 +29,4 @@ COPY . .
 EXPOSE 3001
 ENV PYTHONPATH=/app
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:3001/health')" || exit 1
-
 CMD ["python", "-m", "src.main"]
