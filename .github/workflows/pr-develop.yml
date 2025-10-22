@@ -152,20 +152,12 @@ jobs:
           restore-keys: |
             pip-logistics-${{ runner.os }}-
 
-      - name: Cache .venv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: logistics-service/.venv
-          key: venv-logistics-${{ runner.os }}-${{ hashFiles('logistics-service/Pipfile.lock') }}
-
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pip
           pip install "pipenv>=2023.0.0"
 
       - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --skip-lock
 
@@ -233,20 +225,12 @@ jobs:
           restore-keys: |
             pip-sales-${{ runner.os }}-
 
-      - name: Cache .venv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: sales-service/.venv
-          key: venv-sales-${{ runner.os }}-${{ hashFiles('sales-service/Pipfile.lock') }}
-
       - name: Install pipenv
         run: |
           python -m pip install --upgrade pip
           pip install "pipenv>=2023.0.0"
 
       - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --skip-lock
 
