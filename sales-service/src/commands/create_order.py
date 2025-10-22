@@ -133,6 +133,7 @@ class CreateOrder:
             delivery_address=self.data.get('delivery_address', customer.address),
             delivery_city=self.data.get('delivery_city', customer.city),
             delivery_department=self.data.get('delivery_department', customer.department),
+            delivery_date=self._parse_delivery_date(self.data.get('delivery_date')),
             preferred_distribution_center=self.data.get('preferred_distribution_center'),
             notes=self.data.get('notes')
         )
@@ -180,3 +181,19 @@ class CreateOrder:
         
         sequence = str(count + 1).zfill(4)
         return f'ORD-{today}-{sequence}'
+    
+    def _parse_delivery_date(self, delivery_date_str):
+        """Parse delivery date string to datetime object."""
+        if not delivery_date_str:
+            return None
+        
+        try:
+            # Expect format YYYY-MM-DD or YYYY-MM-DD HH:MM:SS
+            if len(delivery_date_str) == 10:  # YYYY-MM-DD
+                return datetime.strptime(delivery_date_str, '%Y-%m-%d')
+            elif len(delivery_date_str) == 19:  # YYYY-MM-DD HH:MM:SS
+                return datetime.strptime(delivery_date_str, '%Y-%m-%d %H:%M:%S')
+            else:
+                return None
+        except ValueError:
+            return None

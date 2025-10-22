@@ -28,6 +28,7 @@ def create_order():
         delivery_address (str, opcional): Dirección de entrega
         delivery_city (str, opcional): Ciudad de entrega
         delivery_department (str, opcional): Departamento de entrega
+        delivery_date (str, opcional): Fecha estimada de entrega (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
         preferred_distribution_center (str, opcional): Código del centro de distribución preferido
         notes (str, opcional): Notas de la orden
     
@@ -84,22 +85,34 @@ def get_orders():
         customer_id (int, opcional): Filtrar por ID del cliente
         seller_id (str, opcional): Filtrar por ID del vendedor
         status (str, opcional): Filtrar por estado
+        delivery_date_from (str, opcional): Fecha de entrega desde (formato: YYYY-MM-DD)
+        delivery_date_to (str, opcional): Fecha de entrega hasta (formato: YYYY-MM-DD)
+        order_date_from (str, opcional): Fecha de orden desde (formato: YYYY-MM-DD)
+        order_date_to (str, opcional): Fecha de orden hasta (formato: YYYY-MM-DD)
     
     Retorna:
         200: Lista de órdenes
         500: Error interno del servidor
     
     Ejemplo:
-        GET /orders?customer_id=1&status=pending
+        GET /orders?customer_id=1&status=pending&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31
     """
     customer_id = request.args.get('customer_id', type=int)
     seller_id = request.args.get('seller_id')
     status = request.args.get('status')
+    delivery_date_from = request.args.get('delivery_date_from')
+    delivery_date_to = request.args.get('delivery_date_to')
+    order_date_from = request.args.get('order_date_from')
+    order_date_to = request.args.get('order_date_to')
     
     command = GetOrders(
         customer_id=customer_id,
         seller_id=seller_id,
-        status=status
+        status=status,
+        delivery_date_from=delivery_date_from,
+        delivery_date_to=delivery_date_to,
+        order_date_from=order_date_from,
+        order_date_to=order_date_to
     )
     
     orders = command.execute()

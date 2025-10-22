@@ -23,6 +23,7 @@ class Order(db.Model):
     delivery_address = db.Column(db.String(200))
     delivery_city = db.Column(db.String(100))
     delivery_department = db.Column(db.String(100))
+    delivery_date = db.Column(db.DateTime)  # Fecha estimada/programada de entrega
     preferred_distribution_center = db.Column(db.String(50))  # Centro de distribución preferido
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -55,6 +56,7 @@ class Order(db.Model):
             'delivery_address': self.delivery_address or '',
             'delivery_city': self.delivery_city or '',
             'delivery_department': self.delivery_department or '',
+            'delivery_date': self.delivery_date.isoformat() if self.delivery_date else None,
             'preferred_distribution_center': self.preferred_distribution_center or 'CEDIS-BOG',
             'notes': self.notes or '',
             'created_at': self.created_at.isoformat() if self.created_at else None,
