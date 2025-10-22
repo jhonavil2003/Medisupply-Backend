@@ -69,18 +69,12 @@ jobs:
               - 'logistics-service/**'
             sales-service:
               - 'sales-service/**'
-            shared:
-              - '*/**'
       - id: mk
         run: |
           list=()
-          if [ "${{ steps.changes.outputs.shared }}" = "true" ]; then
-            list+=("\"catalog-service\"" "\"logistics-service\"" "\"sales-service\"")
-          else
-            [ "${{ steps.changes.outputs.catalog-service }}" = "true" ] && list+=("\"catalog-service\"")
-            [ "${{ steps.changes.outputs.logistics-service }}" = "true" ] && list+=("\"logistics-service\"")
-            [ "${{ steps.changes.outputs.sales-service }}" = "true" ] && list+=("\"sales-service\"")
-          fi
+          [ "${{ steps.changes.outputs.catalog-service }}" = "true" ] && list+=("\"catalog-service\"")
+          [ "${{ steps.changes.outputs.logistics-service }}" = "true" ] && list+=("\"logistics-service\"")
+          [ "${{ steps.changes.outputs.sales-service }}" = "true" ] && list+=("\"sales-service\"")
           if [ ${#list[@]} -eq 0 ]; then
             echo 'matrix={"service":[]}' >> $GITHUB_OUTPUT
             echo 'has-changes=false' >> $GITHUB_OUTPUT
