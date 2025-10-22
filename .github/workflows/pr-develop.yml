@@ -54,9 +54,9 @@ jobs:
   detectar-cambios:
     runs-on: ubuntu-latest
     outputs:
-      a: ${{ steps.changes.outputs.catalog-service }}
-      b: ${{ steps.changes.outputs.logistics-service }}
-      c: ${{ steps.changes.outputs.sales-service }}
+      catalog-service: ${{ steps.changes.outputs.catalog-service }}
+      logistics-service: ${{ steps.changes.outputs.logistics-service }}
+      sales-service: ${{ steps.changes.outputs.sales-service }}
       matrix: ${{ steps.mk.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
@@ -66,14 +66,14 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            catalog-service:
-              - 'catalog-service/**'
-            logistics-service:
-              - 'logistics-service/**'
-            sales-service:
-              - 'sales-service/**':
-            shared:        # si cambia código compartido, corre todo
-              - '*/**'
+            sales_service:
+              - 'sales-service/**'
+            booking_service:
+              - 'booking-service/**'
+            payments_service:
+              - 'payments-service/**'
+            shared:
+              - 'shared/**'
       - id: mk
         run: |
           list=()
@@ -92,9 +92,12 @@ jobs:
 
   unit-test-catalog:
     name: "Unit Tests - Catalog Service"
-    needs: detectar-cambios
-    if: ${{ fromJson(needs.detectar-cambios.outputs.matrix).service[0] != null }}
+    needs: [setup-verification, detectar-cambios]
+    if: ${{ needs.detectar-cambios.result == 'success' && needs.detectar-cambios.outputs.has-changes == 'true' }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detectar-cambios.outputs.matrix) }}
+      fail-fast: false
 
     defaults:
       run:
@@ -117,9 +120,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-catalog-${{ runner.os }}-${{ hashFiles('catalog-service/Pipfile.lock') }}
+          key: pip-${{ matrix.service }}-${{ runner.os }}-${{ hashFiles(format('{0}/Pipfile.lock', matrix.service)) }}
           restore-keys: |
-            pip-catalog-${{ runner.os }}-
+            pip-${{ matrix.service }}-${{ runner.os }}-
 
       - name: Install pipenv
         run: |
@@ -143,31 +146,32 @@ jobs:
             pipenv install --dev --skip-lock
           fi
 
-      - name: Run catalog-service tests
+      - name: Run tests
         run: |
-          echo "Running catalog-service unit tests..."
+          echo "Running ${{ matrix.service }} unit tests..."
           pipenv run pytest tests/ -v --tb=short \
-            --junitxml=pytest-catalog.xml \
+            --junitxml=pytest-${{ matrix.service }}.xml \
             --cov=src --cov-report=xml --cov-report=term-missing
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pytest-catalog-results
-          path: catalog-service/pytest-catalog.xml
+          name: pytest-${{ matrix.service }}-results
+          path: ${{ matrix.service }}/pytest-${{ matrix.service }}.xml
 
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-catalog
-          path: catalog-service/coverage.xml
+          name: coverage-${{ matrix.service }}
+          path: ${{ matrix.service }}/coverage.xml
 
   unit-test-logistics:
-    name: "Unit Tests - Logistics Service"
+    name: "Unit Tests - Logistics Service (Legacy)"
     runs-on: ubuntu-latest
-    needs: setup-verification
+    needs: [setup-verification, detectar-cambios]
+    if: ${{ needs.detectar-cambios.outputs.has-changes == 'false' }}
 
     defaults:
       run:
@@ -238,9 +242,10 @@ jobs:
           path: logistics-service/coverage.xml
 
   unit-test-sales:
-    name: "Unit Tests - Sales Service"
+    name: "Unit Tests - Sales Service (Legacy)"
     runs-on: ubuntu-latest
-    needs: setup-verification
+    needs: [setup-verification, detectar-cambios]
+    if: ${{ needs.detectar-cambios.outputs.has-changes == 'false' }}
 
     defaults:
       run:
@@ -314,7 +319,7 @@ jobs:
     name: "Coverage Analysis"
     runs-on: ubuntu-latest
     needs: [unit-test-catalog, unit-test-logistics, unit-test-sales]
-    if: always()
+    if: always() && (needs.unit-test-catalog.result != 'skipped' || needs.unit-test-logistics.result != 'skipped' || needs.unit-test-sales.result != 'skipped')
 
     steps:
       - uses: actions/checkout@v4
