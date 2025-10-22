@@ -21,7 +21,8 @@ COPY Pipfile Pipfile.lock ./
 
 RUN python -m pip install --upgrade pip && \
     pip install --no-cache-dir pipenv && \
-    pipenv sync --system --deploy
+    pipenv lock && \
+    pipenv install --system --deploy
 
 COPY . .
 
