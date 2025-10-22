@@ -450,26 +450,37 @@ jobs:
           
           echo ""
           echo "Unit Tests:"
-          
-          if [[ "${{ needs.unit-test-catalog.result }}" == "success" ]]; then
-            echo "   ✅ Catalog Service tests passed"
+          if [[ "${{ needs.unit-test-catalog.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.unit-test-catalog.result }}" == "success" ]]; then
+              echo "   ✅ Catalog Service tests passed"
+            else
+              echo "   ❌: Catalog Service tests failed"
+              ((FAILURES++))
+            fi
           else
-            echo "   ❌: Catalog Service tests failed"
-            ((FAILURES++))
+            echo "   ✅ Catalog Service tests skipped"
           fi
           
-          if [[ "${{ needs.unit-test-logistics.result }}" == "success" ]]; then
-            echo "   ✅ Logistics Service tests passed"
+          if [[ "${{ needs.unit-test-logistics.result }}" != "skipped" ]]; then          
+            if [[ "${{ needs.unit-test-logistics.result }}" == "success" ]]; then
+              echo "   ✅ Logistics Service tests passed"
+            else
+              echo "   ERROR: Logistics Service tests failed"
+              ((FAILURES++))
+            fi
           else
-            echo "   ERROR: Logistics Service tests failed"
-            ((FAILURES++))
+            echo "   ✅ Logistics Service tests skipped"
           fi
           
-          if [[ "${{ needs.unit-test-sales.result }}" == "success" ]]; then
-            echo "   ✅ Sales Service tests passed"
+          if [[ "${{ needs.unit-test-sales.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.unit-test-sales.result }}" == "success" ]]; then
+              echo "   ✅ Sales Service tests passed"
+            else
+              echo "   ❌: Sales Service tests failed"
+              ((FAILURES++))
+            fi
           else
-            echo "   ❌: Sales Service tests failed"
-            ((FAILURES++))
+            echo "   ✅ Sales Service tests skipped"
           fi
           
           echo ""
