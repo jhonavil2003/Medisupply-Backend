@@ -1,5 +1,14 @@
 # Sales Service - MediSupply Backend
 
+Servicio de ventas con capacidades de tracking de órdenes, filtrado avanzado por fechas, estado y cliente.
+
+**Características principales:**
+- ✅ Gestión completa de clientes y órdenes
+- ✅ Filtros avanzados por fechas, estado, cliente y vendedor  
+- ✅ Tracking de órdenes en tiempo real
+- ✅ Integración con servicios de catálogo y logística
+- ✅ Validación de stock en tiempo real
+
 ##  Quick Start
 
 ###  Levantar servicios
@@ -26,6 +35,9 @@ curl http://localhost:3003/health
 
 # Obtener clientes
 curl http://localhost:3003/customers
+
+# Obtener pedidos con filtros
+curl "http://localhost:3003/orders?customer_id=1&status=pending"
 
 # Crear un pedido (requiere catalog-service y logistics-service corriendo)
 curl -X POST http://localhost:3003/orders \
@@ -97,22 +109,23 @@ Crear un nuevo pedido con validación de stock en tiempo real **(HU-102)**.
 **Request Body:**
 ```json
 {
-  "customer_id": 1,
-  "seller_id": "SELLER-001",
-  "seller_name": "Juan Pérez",
-  "items": [
+  "customer_id": 1,                    // ID del cliente (requerido)
+  "seller_id": "SELLER-001",          // ID del vendedor (requerido) 
+  "seller_name": "Juan Perez",        // Nombre del vendedor (opcional)
+  "items": [                          // Lista de productos (requerido)
     {
-      "product_sku": "JER-001",
-      "quantity": 10,
-      "discount_percentage": 5.0
-    },
-    {
-      "product_sku": "VAC-001",
-      "quantity": 5
+      "product_sku": "JER-001",       // SKU del producto (requerido)
+      "quantity": 10,                 // Cantidad (requerido)
+      "discount_percentage": 5.0,     // Descuento % (opcional, default: 0.0)
+      "tax_percentage": 19.0          // Impuesto % (opcional, default: 19.0)
     }
   ],
-  "payment_terms": "credito_30",
-  "payment_method": "transferencia",
+  // Campos opcionales con valores permitidos:
+  "payment_terms": "credito_30",      // contado, credito_30, credito_60, credito_90
+  "payment_method": "transferencia",  // transferencia, cheque, efectivo
+  "delivery_address": "Calle 10 #5-25",
+  "delivery_city": "Bogota",
+  "delivery_department": "Cundinamarca", 
   "preferred_distribution_center": "DC-BOG-001",
   "notes": "Entrega urgente"
 }
@@ -159,11 +172,28 @@ Obtener lista de pedidos con filtros opcionales.
 **Query Parameters:**
 - `customer_id` (opcional): ID del cliente
 - `seller_id` (opcional): ID del vendedor
-- `status` (opcional): Estado del pedido
+- `status` (opcional): Estado del pedido (pending, confirmed, processing, shipped, delivered, cancelled)
+- `delivery_date_from` (opcional): Fecha desde (formato: YYYY-MM-DD) - usa order_date como proxy
+- `delivery_date_to` (opcional): Fecha hasta (formato: YYYY-MM-DD) - usa order_date como proxy
+- `order_date_from` (opcional): Fecha de orden desde (formato: YYYY-MM-DD)
+- `order_date_to` (opcional): Fecha de orden hasta (formato: YYYY-MM-DD)
 
-**Ejemplo:**
+**Ejemplos:**
 ```bash
+# Básico: pedidos de cliente específico
+curl "http://localhost:3003/orders?customer_id=1"
+
+# Con filtro de estado
 curl "http://localhost:3003/orders?customer_id=1&status=pending"
+
+# Con filtro de fechas
+curl "http://localhost:3003/orders?customer_id=1&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31"
+
+# Filtro completo: cliente + estado + fechas
+curl "http://localhost:3003/orders?customer_id=1&status=confirmed&delivery_date_from=2025-10-01&delivery_date_to=2025-12-31"
+
+# PowerShell equivalente
+Invoke-RestMethod -Uri "http://localhost:3003/orders?customer_id=1&status=pending&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31" -Method GET
 ```
 
 #### GET /orders/{id}
@@ -209,7 +239,148 @@ curl -X DELETE http://localhost:3003/orders/1 | python3 -m json.tool
 
 **Nota:** La eliminación es en cascada, por lo que también se eliminarán todos los ítems relacionados con la orden.
 
+## 🔍 **Filtros Avanzados para Órdenes**
 
+### **Casos de Uso Comunes**
+
+#### 1. **Pedidos por cliente y estado**
+```bash
+# Pedidos pendientes del cliente 1
+curl "http://localhost:3003/orders?customer_id=1&status=pending"
+
+# Pedidos confirmados del cliente 2
+curl "http://localhost:3003/orders?customer_id=2&status=confirmed"
+```
+
+#### 2. **Filtros por fechas (tracking de órdenes)**
+```bash
+# Pedidos del mes de octubre 2025
+curl "http://localhost:3003/orders?delivery_date_from=2025-10-01&delivery_date_to=2025-10-31"
+
+# Pedidos de los últimos 7 días
+curl "http://localhost:3003/orders?order_date_from=2025-10-13&order_date_to=2025-10-20"
+
+# Pedidos de un cliente en rango específico
+curl "http://localhost:3003/orders?customer_id=1&delivery_date_from=2025-10-01&delivery_date_to=2025-12-31"
+```
+
+#### 3. **Filtros por vendedor**
+```bash
+# Todos los pedidos de un vendedor
+curl "http://localhost:3003/orders?seller_id=SELLER-001"
+
+# Pedidos de un vendedor en estado específico
+curl "http://localhost:3003/orders?seller_id=SELLER-001&status=shipped"
+```
+
+#### 4. **Filtros combinados (reporte completo)**
+```bash
+# Reporte: cliente específico, estado confirmado, últimos 30 días
+curl "http://localhost:3003/orders?customer_id=1&status=confirmed&delivery_date_from=2025-10-01&delivery_date_to=2025-10-30"
+```
+
+### **Estados y Valores del Sistema**
+
+#### **🔄 Estados de Pedidos (`status`)**
+- `pending` - Pedido creado, esperando confirmación (default)
+- `confirmed` - Pedido confirmado, en proceso
+- `processing` - Pedido en preparación
+- `shipped` - Pedido enviado
+- `delivered` - Pedido entregado
+- `cancelled` - Pedido cancelado
+
+#### **💳 Términos de Pago (`payment_terms`)**
+- `contado` - Pago de contado/inmediato (default)
+- `credito_30` - Crédito a 30 días
+- `credito_60` - Crédito a 60 días
+- `credito_90` - Crédito a 90 días
+
+#### **💰 Métodos de Pago (`payment_method`)**
+- `transferencia` - Transferencia bancaria
+- `cheque` - Pago con cheque
+- `efectivo` - Pago en efectivo
+
+#### **🏥 Tipos de Cliente (`customer_type`)**
+- `hospital` - Hospital
+- `clinica` - Clínica
+- `farmacia` - Farmacia
+- `eps` - Entidad Promotora de Salud
+- `ips` - Institución Prestadora de Servicios
+
+#### **✅ Estados de Stock (`stock_confirmed`)**
+- `true` - Stock confirmado/disponible
+- `false` - Stock no confirmado/insuficiente (default)
+
+### **📊 Ejemplos de Filtrado por Estados**
+
+```bash
+# Filtrar por diferentes estados de pedidos
+curl "http://localhost:3003/orders?status=pending"
+curl "http://localhost:3003/orders?status=confirmed"
+curl "http://localhost:3003/orders?status=delivered"
+
+# Combinar cliente con estado específico
+curl "http://localhost:3003/orders?customer_id=1&status=processing"
+
+# Filtrar pedidos por términos de pago
+curl "http://localhost:3003/orders?customer_id=1" # Todos los términos
+# Nota: Actualmente no hay filtro directo por payment_terms, usar respuesta completa
+
+# Ejemplo de creación con estados específicos
+curl -X POST "http://localhost:3003/orders" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": 1,
+    "seller_id": "SELLER-001",
+    "items": [{"product_sku": "JER-001", "quantity": 5}],
+    "payment_terms": "credito_30",
+    "payment_method": "transferencia"
+  }'
+```
+
+### **PowerShell - Ejemplos Prácticos**
+```powershell
+# Obtener pedidos y mostrar solo el total
+$response = Invoke-RestMethod -Uri "http://localhost:3003/orders?customer_id=1" -Method GET
+Write-Host "Total pedidos cliente 1: $($response.total)"
+
+# Filtro con fechas y formatear salida
+$response = Invoke-RestMethod -Uri "http://localhost:3003/orders?customer_id=1&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31" -Method GET
+$response | ConvertTo-Json -Depth 3
+
+# Obtener solo los números de orden
+$response = Invoke-RestMethod -Uri "http://localhost:3003/orders?customer_id=1" -Method GET
+$response.orders | ForEach-Object { Write-Host "Orden: $($_.order_number) - Estado: $($_.status)" }
+```
+
+---
+
+## 📚 **Referencia Rápida - Valores Permitidos**
+
+| Campo | Valores Permitidos | Default |
+|-------|-------------------|---------|
+| **status** | `pending`, `confirmed`, `processing`, `shipped`, `delivered`, `cancelled` | `pending` |
+| **payment_terms** | `contado`, `credito_30`, `credito_60`, `credito_90` | `contado` |
+| **payment_method** | `transferencia`, `cheque`, `efectivo` | - |
+| **customer_type** | `hospital`, `clinica`, `farmacia`, `eps`, `ips` | - |
+| **stock_confirmed** | `true`, `false` | `false` |
+
+### **Endpoints Principales**
+```bash
+# Salud del servicio
+GET /health
+
+# Clientes
+GET /customers                    # Listar todos
+GET /customers/{id}              # Obtener por ID
+POST /customers                  # Crear nuevo
+
+# Órdenes  
+GET /orders                      # Listar con filtros
+GET /orders/{id}                 # Obtener por ID
+POST /orders                     # Crear nueva
+DELETE /orders/{id}              # Eliminar
+```
 
 ##  Testing
 
