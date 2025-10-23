@@ -440,17 +440,19 @@ class TestUpdateOrderCommand:
     # ==================== EDGE CASES ====================
     
     def test_update_order_with_no_changes(self, db, sample_order):
-        """Test updating with empty data or no real changes."""
-        original_status = sample_order.status
+        """Test updating with no real field changes but auto-confirms status."""
+        # Order starts as pending
+        assert sample_order.status == 'pending'
         
         update_data = {
-            'status': 'pending'  # Same as current
+            'notes': 'Same note'
         }
         
         command = UpdateOrder(sample_order.id, update_data)
         result = command.execute()
         
-        assert result['status'] == original_status
+        # Status should auto-confirm even with minimal changes
+        assert result['status'] == 'confirmed'
     
     def test_update_order_returns_complete_data(self, db, sample_order):
         """Test that update returns complete order with items and customer."""

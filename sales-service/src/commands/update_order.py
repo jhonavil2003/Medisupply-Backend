@@ -113,7 +113,11 @@ class UpdateOrder:
             if items_updated:
                 self._recalculate_totals(order)
             
-            # 8. Save changes to database
+            # 8. Auto-confirm order: Change status from PENDING to CONFIRMED after update
+            if order.status == 'pending':
+                order.status = 'confirmed'
+            
+            # 9. Save changes to database
             try:
                 db.session.commit()
             except IntegrityError as e:
@@ -123,7 +127,7 @@ class UpdateOrder:
                 db.session.rollback()
                 raise DatabaseError(f"Database error while updating order: {str(e)}")
             
-            # 9. Return updated order with all relationships
+            # 10. Return updated order with all relationships
             return order.to_dict(include_items=True, include_customer=True)
         
         except (NotFoundError, ApiError, ValidationError, DatabaseError):
