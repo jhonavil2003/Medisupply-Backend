@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from src.session import db
 
 
@@ -53,20 +54,26 @@ class OrderItem(db.Model):
     
     def calculate_totals(self):
         """Calculate discount, tax, and total amounts."""
+        # Ensure all values are Decimal for consistent calculations
+        unit_price = Decimal(str(self.unit_price)) if not isinstance(self.unit_price, Decimal) else self.unit_price
+        quantity = Decimal(str(self.quantity)) if not isinstance(self.quantity, Decimal) else self.quantity
+        discount_pct = Decimal(str(self.discount_percentage)) if not isinstance(self.discount_percentage, Decimal) else self.discount_percentage
+        tax_pct = Decimal(str(self.tax_percentage)) if not isinstance(self.tax_percentage, Decimal) else self.tax_percentage
+        
         # Calculate discount amount
-        if self.discount_percentage and self.discount_percentage > 0:
-            self.discount_amount = (self.unit_price * self.quantity * self.discount_percentage) / 100
+        if discount_pct and discount_pct > 0:
+            self.discount_amount = (unit_price * quantity * discount_pct) / Decimal('100')
         else:
-            self.discount_amount = 0.0
+            self.discount_amount = Decimal('0.0')
         
         # Calculate subtotal after discount
-        self.subtotal = (self.unit_price * self.quantity) - self.discount_amount
+        self.subtotal = (unit_price * quantity) - self.discount_amount
         
         # Calculate tax amount
-        if self.tax_percentage and self.tax_percentage > 0:
-            self.tax_amount = (self.subtotal * self.tax_percentage) / 100
+        if tax_pct and tax_pct > 0:
+            self.tax_amount = (self.subtotal * tax_pct) / Decimal('100')
         else:
-            self.tax_amount = 0.0
+            self.tax_amount = Decimal('0.0')
         
         # Calculate total
         self.total = self.subtotal + self.tax_amount
