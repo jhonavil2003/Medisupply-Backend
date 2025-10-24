@@ -1,10 +1,10 @@
 from src.models.order import Order
 from src.session import db
-from src.errors.errors import NotFoundError
+from src.errors.errors import NotFoundError, ApiError
 
 
 class DeleteOrder:
-    """Command to delete an order by ID."""
+    """Command to delete an order by ID (only PENDING orders)."""
     
     def __init__(self, order_id):
         self.order_id = order_id
@@ -12,17 +12,26 @@ class DeleteOrder:
     def execute(self):
         """
         Execute the command to delete an order.
+        Only allows deletion of orders in 'pending' status.
         
         Returns:
             dict: Confirmation message with deleted order details
             
         Raises:
-            NotFoundError: If order not found
+            NotFoundError: If order not found (404)
+            ApiError: If order is not in 'pending' status (400)
         """
         order = Order.query.filter_by(id=self.order_id).first()
         
         if not order:
             raise NotFoundError(f"Order with ID {self.order_id} not found")
+        
+        # Validate order status - only PENDING orders can be deleted
+        if order.status != 'pending':
+            raise ApiError(
+                f"Solo se pueden eliminar órdenes en estado 'pending'. Esta orden está en estado '{order.status}'",
+                status_code=400
+            )
         
         # Guardar información antes de eliminar
         order_info = {

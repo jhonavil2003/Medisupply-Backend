@@ -6,7 +6,7 @@ from decimal import Decimal
 class TestOrdersBlueprint:
     """Test suite for Orders Blueprint endpoints."""
     
-    def test_get_orders_all(self, client, sample_order):
+    def test_get_orders_all(self, client, sample_order, sample_customer):
         """Test GET /orders without filters."""
         response = client.get('/orders')
         
@@ -16,6 +16,14 @@ class TestOrdersBlueprint:
         assert 'total' in data
         assert data['total'] >= 1
         assert isinstance(data['orders'], list)
+        
+        # Verify customer object is included
+        first_order = data['orders'][0]
+        assert 'customer' in first_order
+        assert first_order['customer'] is not None
+        assert 'id' in first_order['customer']
+        assert 'business_name' in first_order['customer']
+        assert first_order['customer']['id'] == sample_customer.id
     
     def test_get_orders_by_customer(self, client, sample_order):
         """Test GET /orders filtered by customer_id."""

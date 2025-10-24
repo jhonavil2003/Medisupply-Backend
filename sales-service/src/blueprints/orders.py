@@ -315,22 +315,52 @@ def update_order(order_id):
 @orders_bp.route('/<int:order_id>', methods=['DELETE'])
 def delete_order(order_id):
     """
-    Elimina una orden por ID.
+    Elimina una orden por ID (solo órdenes en estado PENDING).
+    
+    Solo permite eliminar órdenes que estén en estado 'pending'.
+    Órdenes confirmadas, en proceso o entregadas no pueden ser eliminadas.
     
     Parámetros de Path:
         order_id (int): ID de la orden a eliminar
     
     Retorna:
         200: Orden eliminada exitosamente
+        400: Orden no está en estado PENDING
         404: Orden no encontrada
     
     Ejemplo:
         DELETE /orders/1
-    """
-    command = DeleteOrder(order_id)
-    result = command.execute()
     
-    return jsonify(result), 200
+    Errores Comunes:
+        - 400: {"error": "Solo se pueden eliminar órdenes en estado 'pending'. Esta orden está en estado 'confirmed'", "status_code": 400}
+        - 404: {"error": "Order with ID 999 not found", "status_code": 404}
+    """
+    try:
+        command = DeleteOrder(order_id)
+        result = command.execute()
+        
+        return jsonify(result), 200
+    
+    except NotFoundError as e:
+        # 404 - Order not found
+        return jsonify({
+            'error': str(e),
+            'status_code': 404
+        }), 404
+    
+    except ApiError as e:
+        # 400 - Order is not in PENDING status
+        return jsonify({
+            'error': str(e),
+            'status_code': e.status_code
+        }), e.status_code
+    
+    except Exception as e:
+        # 500 - Unexpected error
+        return jsonify({
+            'error': f'Internal server error: {str(e)}',
+            'status_code': 500
+        }), 500
 
 
 @orders_bp.route('/health', methods=['GET'])

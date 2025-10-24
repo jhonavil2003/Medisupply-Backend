@@ -332,6 +332,48 @@ class TestUpdateOrderCommand:
         
         assert exc_info.value.status_code == 400
     
+    def test_update_order_items_missing_unit_price(self, db, sample_order):
+        """Test that unit_price is required when updating items."""
+        update_data = {
+            'items': [
+                {
+                    'product_sku': 'JER-001',
+                    'quantity': 10
+                    # unit_price is missing - should fail
+                }
+            ]
+        }
+        
+        command = UpdateOrder(sample_order.id, update_data)
+        
+        with pytest.raises(ApiError) as exc_info:
+            command.execute()
+        
+        assert exc_info.value.status_code == 400
+        assert "unit_price" in str(exc_info.value).lower()
+        assert "missing required field" in str(exc_info.value).lower()
+    
+    def test_update_order_items_negative_unit_price(self, db, sample_order):
+        """Test that unit_price cannot be negative."""
+        update_data = {
+            'items': [
+                {
+                    'product_sku': 'JER-001',
+                    'quantity': 10,
+                    'unit_price': -500.00  # Invalid: negative price
+                }
+            ]
+        }
+        
+        command = UpdateOrder(sample_order.id, update_data)
+        
+        with pytest.raises(ApiError) as exc_info:
+            command.execute()
+        
+        assert exc_info.value.status_code == 400
+        assert "unit_price" in str(exc_info.value).lower()
+        assert "negative" in str(exc_info.value).lower()
+    
     def test_update_order_items_not_a_list(self, db, sample_order):
         """Test that items must be a list."""
         update_data = {

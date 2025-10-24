@@ -5,6 +5,7 @@ This command handles partial updates (PATCH) for orders.
 Only orders in 'pending' status can be updated.
 Immutable fields (customer_id, seller_id, order_number, etc.) are protected.
 """
+from datetime import datetime
 from decimal import Decimal
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from src.session import db
@@ -305,7 +306,7 @@ class UpdateOrder:
                     product_sku=item_data['product_sku'],
                     product_name=item_data.get('product_name', ''),
                     quantity=item_data['quantity'],
-                    unit_price=Decimal(str(item_data.get('unit_price', 0.0))),
+                    unit_price=Decimal(str(item_data['unit_price'])),
                     discount_percentage=Decimal(str(item_data.get('discount_percentage', 0.0))),
                     tax_percentage=Decimal(str(item_data.get('tax_percentage', 19.0))),
                     distribution_center_code=item_data.get(
@@ -313,7 +314,7 @@ class UpdateOrder:
                         order.preferred_distribution_center or 'CEDIS-BOG'
                     ),
                     stock_confirmed=item_data.get('stock_confirmed', False),
-                    stock_confirmation_date=item_data.get('stock_confirmation_date')
+                    stock_confirmation_date=datetime.utcnow()
                 )
                 
                 # Calculate item totals
@@ -337,7 +338,7 @@ class UpdateOrder:
             ValidationError: If required fields are missing or invalid (400)
         """
         # Validate required fields
-        required_fields = ['product_sku', 'quantity']
+        required_fields = ['product_sku', 'quantity', 'unit_price']
         for field in required_fields:
             if field not in item_data:
                 raise ValidationError(f"Item at index {idx} is missing required field: '{field}'")
@@ -349,6 +350,14 @@ class UpdateOrder:
                 raise ValidationError(f"Item at index {idx}: quantity must be greater than 0 (received: {quantity})")
         except (ValueError, TypeError):
             raise ValidationError(f"Item at index {idx}: quantity must be a valid positive integer")
+        
+        # Validate unit_price
+        try:
+            unit_price = float(item_data['unit_price'])
+            if unit_price < 0:
+                raise ValidationError(f"Item at index {idx}: unit_price cannot be negative (received: {unit_price})")
+        except (ValueError, TypeError):
+            raise ValidationError(f"Item at index {idx}: unit_price must be a valid number")
         
         # Validate product_sku is not empty
         if not item_data['product_sku'] or not str(item_data['product_sku']).strip():
