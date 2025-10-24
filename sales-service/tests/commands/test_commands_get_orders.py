@@ -19,6 +19,27 @@ class TestGetOrdersCommand:
         assert 'items' in result[0]
         assert len(result[0]['items']) >= 2
     
+    def test_get_orders_includes_customer(self, db, sample_order, sample_customer):
+        """Test that orders include complete customer object."""
+        command = GetOrders()
+        result = command.execute()
+        
+        assert len(result) >= 1
+        order = result[0]
+        
+        # Verify customer object is present
+        assert 'customer' in order
+        assert order['customer'] is not None
+        
+        # Verify customer has all required fields
+        customer = order['customer']
+        assert 'id' in customer
+        assert 'business_name' in customer
+        assert 'trade_name' in customer
+        assert 'document_number' in customer
+        assert customer['id'] == sample_customer.id
+        assert customer['business_name'] == sample_customer.business_name
+    
     def test_get_orders_by_customer(self, db, sample_order, sample_customer):
         """Test filtering orders by customer."""
         command = GetOrders(customer_id=sample_customer.id)

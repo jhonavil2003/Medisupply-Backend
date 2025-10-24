@@ -359,6 +359,26 @@ class UpdateOrder:
         except (ValueError, TypeError):
             raise ValidationError(f"Item at index {idx}: unit_price must be a valid number")
         
+        # Validate discount_percentage if provided
+        if 'discount_percentage' in item_data:
+            try:
+                discount = float(item_data['discount_percentage'])
+                if discount < 0:
+                    raise ValidationError(f"Item at index {idx}: discount_percentage cannot be negative")
+                if discount > 100:
+                    raise ValidationError(f"Item at index {idx}: discount_percentage cannot exceed 100")
+            except (ValueError, TypeError):
+                raise ValidationError(f"Item at index {idx}: discount_percentage must be a valid number")
+        
+        # Validate tax_percentage if provided
+        if 'tax_percentage' in item_data:
+            try:
+                tax = float(item_data['tax_percentage'])
+                if tax < 0:
+                    raise ValidationError(f"Item at index {idx}: tax_percentage cannot be negative")
+            except (ValueError, TypeError):
+                raise ValidationError(f"Item at index {idx}: tax_percentage must be a valid number")
+        
         # Validate product_sku is not empty
         if not item_data['product_sku'] or not str(item_data['product_sku']).strip():
             raise ValidationError(f"Item at index {idx}: product_sku cannot be empty")
