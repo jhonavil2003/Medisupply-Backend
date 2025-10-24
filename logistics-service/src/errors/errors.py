@@ -5,7 +5,7 @@ class ApiError(Exception):
     status_code = 400
     
     def __init__(self, message, status_code=None, payload=None):
-        super().__init__()
+        super().__init__(message)
         self.message = message
         if status_code is not None:
             self.status_code = status_code
@@ -16,6 +16,9 @@ class ApiError(Exception):
         rv['error'] = self.message
         rv['status_code'] = self.status_code
         return rv
+    
+    def __str__(self):
+        return self.message
 
 class NotFoundError(ApiError):
     """Resource not found error"""

@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.orm import joinedload
 from src.models.order import Order
 
 
@@ -22,7 +23,8 @@ class GetOrders:
         Returns:
             list: List of order dictionaries
         """
-        query = Order.query
+        # Eager load customer relationship to avoid N+1 queries
+        query = Order.query.options(joinedload(Order.customer))
         
         # Apply filters
         if self.customer_id:
@@ -69,4 +71,4 @@ class GetOrders:
         
         orders = query.all()
         
-        return [order.to_dict(include_items=True) for order in orders]
+        return [order.to_dict(include_items=True, include_customer=True) for order in orders]

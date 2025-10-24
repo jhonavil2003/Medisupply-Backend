@@ -41,6 +41,27 @@ class StockValidationError(ApiError):
         super().__init__(message, status_code=409, payload=payload)
 
 
+class ForbiddenError(ApiError):
+    """Raised when user doesn't have permission to perform an action."""
+    
+    def __init__(self, message="Forbidden - You don't have permission to perform this action", payload=None):
+        super().__init__(message, status_code=403, payload=payload)
+
+
+class ConflictError(ApiError):
+    """Raised when there's a conflict with the current state of the resource."""
+    
+    def __init__(self, message="Conflict", payload=None):
+        super().__init__(message, status_code=409, payload=payload)
+
+
+class DatabaseError(ApiError):
+    """Raised when there's a database operation error."""
+    
+    def __init__(self, message="Database error occurred", payload=None):
+        super().__init__(message, status_code=500, payload=payload)
+
+
 class ExternalServiceError(ApiError):
     """Raised when an external service call fails."""
     
