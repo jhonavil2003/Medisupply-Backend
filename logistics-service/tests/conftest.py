@@ -11,6 +11,8 @@ from src.main import create_app
 from src.session import db as _db
 from src.models.inventory import Inventory
 from src.models.distribution_center import DistributionCenter
+from src.models.warehouse_location import WarehouseLocation
+from src.models.product_batch import ProductBatch
 
 
 @pytest.fixture(scope='function')
@@ -129,3 +131,52 @@ def multiple_inventory_items(db, sample_distribution_center, sample_distribution
     
     db.session.commit()
     return items
+
+
+@pytest.fixture
+def db_session(db):
+    """Alias para el fixture db, usado en los tests"""
+    return db.session
+
+
+@pytest.fixture
+def distribution_center(db, sample_distribution_center):
+    """Alias para sample_distribution_center"""
+    return sample_distribution_center
+
+
+@pytest.fixture
+def warehouse_location(db, sample_distribution_center):
+    """Fixture para una ubicación de bodega"""
+    location = WarehouseLocation(
+        distribution_center_id=sample_distribution_center.id,
+        zone_type='refrigerated',
+        aisle='A',
+        shelf='E1',
+        level_position='N1-P1',
+        temperature_min=2.0,
+        temperature_max=8.0,
+        current_temperature=5.0,
+        capacity_units=100,
+        is_active=True
+    )
+    db.session.add(location)
+    db.session.commit()
+    return location
+
+
+@pytest.fixture
+def warehouse_location_ambient(db, sample_distribution_center):
+    """Fixture para una ubicación de bodega ambiente"""
+    location = WarehouseLocation(
+        distribution_center_id=sample_distribution_center.id,
+        zone_type='ambient',
+        aisle='B',
+        shelf='E2',
+        level_position='N2-P1',
+        capacity_units=200,
+        is_active=True
+    )
+    db.session.add(location)
+    db.session.commit()
+    return location
