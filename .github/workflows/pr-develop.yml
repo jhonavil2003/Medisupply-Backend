@@ -1,6 +1,8 @@
 name: MediSupply Backend - Complete CI/CD Pipeline
 
 on:
+  push:
+    branches: [ 'main']
   pull_request:
     branches: [ 'main', 'develop' ]
 
