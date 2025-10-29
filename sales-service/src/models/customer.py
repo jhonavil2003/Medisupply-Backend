@@ -28,6 +28,7 @@ class Customer(db.Model):
     
     # Relationships
     orders = db.relationship('Order', back_populates='customer', lazy='dynamic')
+    visits = db.relationship('Visit', back_populates='customer', lazy='dynamic')
     
     def __repr__(self):
         return f'<Customer {self.document_number}: {self.business_name}>'
