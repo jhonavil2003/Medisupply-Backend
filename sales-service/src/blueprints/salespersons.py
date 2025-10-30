@@ -9,7 +9,7 @@ from src.entities.salesperson import Salesperson
 from src.session import db
 from sqlalchemy.exc import NoResultFound
 
-salespersons_bp = Blueprint('salespersons', __name__, url_prefix='/api/salespersons')
+salespersons_bp = Blueprint('salespersons', __name__, url_prefix='/salespersons')
 
 
 @salespersons_bp.route('', methods=['POST'])

@@ -13,7 +13,7 @@ from src.session import db
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy import and_, or_
 
-visits_bp = Blueprint('visits', __name__, url_prefix='/api/visits')
+visits_bp = Blueprint('visits', __name__, url_prefix='/visits')
 
 
 @visits_bp.route('', methods=['POST'])

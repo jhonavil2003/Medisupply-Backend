@@ -26,7 +26,7 @@ from src.entities.visit import Visit
 from src.errors.errors import NotFoundError, ValidationError
 
 # Crear el blueprint
-visit_files_bp = Blueprint('visit_files', __name__, url_prefix='/api/visits')
+visit_files_bp = Blueprint('visit_files', __name__, url_prefix='/visits')
 
 # Configuración de archivos
 ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.rtf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.xlsx', '.xls', '.csv', '.zip', '.rar'}
@@ -366,7 +366,7 @@ def download_file(visit_id: int, file_id: int):
 
 
 # Crear el blueprint para rutas globales de archivos (como espera el frontend)
-files_bp = Blueprint('files', __name__, url_prefix='/api/visits/files')
+files_bp = Blueprint('files', __name__, url_prefix='/visits/files')
 
 @files_bp.route('/<int:file_id>', methods=['DELETE'])
 def delete_file_global(file_id: int):
