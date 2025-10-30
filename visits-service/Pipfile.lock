@@ -1,0 +1,58 @@
+{
+    "_meta": {
+        "hash": {
+            "sha256": "2b4646f2b8c14e5bb60bbc4b80e8e4c0af62f7b6fb6a6ac4b48dc2c8b8d92e25"
+        },
+        "pipfile-spec": 6,
+        "requires": {
+            "python_version": "3.12"
+        },
+        "sources": [
+            {
+                "name": "pypi",
+                "url": "https://pypi.org/simple",
+                "verify_ssl": true
+            }
+        ]
+    },
+    "default": {
+        "flask": {
+            "hashes": ["sha256:example"],
+            "version": "==3.0.0"
+        },
+        "flask-sqlalchemy": {
+            "hashes": ["sha256:example"],
+            "version": "==3.1.1"
+        },
+        "psycopg2-binary": {
+            "hashes": ["sha256:example"],
+            "version": "==2.9.9"
+        },
+        "sqlalchemy": {
+            "hashes": ["sha256:example"],
+            "version": "==2.0.23"
+        },
+        "requests": {
+            "hashes": ["sha256:example"],
+            "version": "==2.31.0"
+        },
+        "pydantic": {
+            "hashes": ["sha256:example"],
+            "version": "==2.9.2"
+        }
+    },
+    "develop": {
+        "pytest": {
+            "hashes": ["sha256:example"],
+            "version": "==8.4.2"
+        },
+        "pytest-cov": {
+            "hashes": ["sha256:example"],
+            "version": "==7.0.0"
+        },
+        "pytest-mock": {
+            "hashes": ["sha256:example"],
+            "version": "==3.12.0"
+        }
+    }
+}

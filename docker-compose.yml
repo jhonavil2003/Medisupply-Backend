@@ -129,6 +129,7 @@ services:
       FLASK_ENV: development
       CATALOG_SERVICE_URL: http://catalog-service:3001
       LOGISTICS_SERVICE_URL: http://logistics-service:3002
+      VISITS_SERVICE_URL: http://visits-service:3004
       EXTERNAL_SERVICE_TIMEOUT: 3
       PYTHONPATH: /app
     depends_on:
@@ -144,6 +145,55 @@ services:
       - medisupply-network
     command: python -m src.main
 
+  # ============================================================================
+  # VISITS SERVICE - Gestión de visitas y vendedores
+  # ============================================================================
+  visits-db:
+    image: postgres:14-alpine
+    container_name: medisupply-visits-db
+    environment:
+      POSTGRES_USER: visitsuser
+      POSTGRES_PASSWORD: visits_secure_password_2024
+      POSTGRES_DB: visits_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - visits_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U visitsuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - medisupply-network
+
+  visits-service:
+    build:
+      context: ./visits-service
+      dockerfile: Dockerfile
+    container_name: medisupply-visits-service
+    ports:
+      - "3004:3004"
+    environment:
+      DATABASE_URL: postgresql://visitsuser:visits_secure_password_2024@visits-db:5432/visits_db
+      SERVICE_PORT: 3004
+      FLASK_ENV: development
+      CATALOG_SERVICE_URL: http://catalog-service:3001
+      SALES_SERVICE_URL: http://sales-service:3003
+      LOGISTICS_SERVICE_URL: http://logistics-service:3002
+      EXTERNAL_SERVICE_TIMEOUT: 3
+      PYTHONPATH: /app
+    depends_on:
+      visits-db:
+        condition: service_healthy
+      sales-service:
+        condition: service_started
+    volumes:
+      - ./visits-service/src:/app/src
+    networks:
+      - medisupply-network
+    command: python -m src.main
+
 volumes:
   catalog_data:
     name: medisupply_catalog_data
@@ -151,3 +201,5 @@ volumes:
     name: medisupply_logistics_data
   sales_data:
     name: medisupply_sales_data
+  visits_data:
+    name: medisupply_visits_data
