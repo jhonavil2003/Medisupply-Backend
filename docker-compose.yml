@@ -21,7 +21,7 @@ services:
     volumes:
       - catalog_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cataloguser"]
+      test: ["CMD-SHELL", "pg_isready -U cataloguser -d catalog_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +65,7 @@ services:
     volumes:
       - logistics_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logisticsuser"]
+      test: ["CMD-SHELL", "pg_isready -U logisticsuser -d logistics_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -109,7 +109,7 @@ services:
     volumes:
       - sales_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U salesuser"]
+      test: ["CMD-SHELL", "pg_isready -U salesuser -d sales_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -160,7 +160,7 @@ services:
     volumes:
       - visits_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U visitsuser"]
+      test: ["CMD-SHELL", "pg_isready -U visitsuser -d visits_db"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -1,9 +1,12 @@
 from pydantic import BaseModel, Field
 from datetime import date, time, datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from src.entities.visit_status import VisitStatus
-from .basic_info_dtos import CustomerBasicInfo, SalespersonBasicInfo, VisitFileResponse
+from .basic_info_dtos import CustomerBasicInfo, SalespersonBasicInfo
+
+if TYPE_CHECKING:
+    from .visit_file_dtos import VisitFileResponse
 
 
 class VisitResponse(BaseModel):
@@ -27,7 +30,7 @@ class VisitResponse(BaseModel):
     
     # Estado y archivos
     status: VisitStatus = Field(..., description="Estado de la visita")
-    files: List[VisitFileResponse] = Field(default_factory=list, description="Archivos adjuntos")
+    files: List['VisitFileResponse'] = Field(default_factory=list, description="Archivos adjuntos")
     files_count: int = Field(0, description="Número de archivos")
     
     # Timestamps
