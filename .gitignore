@@ -206,4 +206,13 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Seed data files - not to be committed
+seed_data.py
+*/seed_data.py
+**/seed_data.py
+
+# SQL dump files
+catalog.sql
+*.sql
+
 .idea
