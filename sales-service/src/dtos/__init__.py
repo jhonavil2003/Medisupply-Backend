@@ -1,40 +1,48 @@
 """
-DTOs package - Contiene los Data Transfer Objects para el módulo de visitas
-Siguiendo el patrón DTO de Java para validación y serialización
+DTOs (Data Transfer Objects) para el servicio de visitas
+
+Este módulo contiene los DTOs para transferencia de datos entre capas,
+con validaciones usando Pydantic.
 """
 
-# Request DTOs
 from .create_visit_request import CreateVisitRequest
-from .update_visit_request import UpdateVisitRequest
-
-# Response DTOs
-from .basic_info_dtos import CustomerBasicInfo, SalespersonBasicInfo, VisitFileResponse
-from .visit_response import VisitResponse, VisitListResponse, VisitListResult
-
-# Filter and Utility DTOs
+from .update_visit_request import UpdateVisitRequest  
+from .visit_response import VisitResponse
+from .basic_info_dtos import CustomerBasicInfo, SalespersonBasicInfo
 from .visit_filters_and_utils import (
-    VisitFilterRequest, 
-    VisitStatsResponse, 
+    VisitFilterRequest,
+    VisitStatsResponse,
     FileUploadRequest,
     BulkVisitUpdateRequest
 )
+from .visit_file_dtos import (
+    VisitFileResponse,
+    VisitFileUploadRequest,
+    VisitFileListResponse,
+    FileUploadResponse,
+    FileDeleteResponse
+)
 
 __all__ = [
-    # Request DTOs
+    # Visit DTOs
     'CreateVisitRequest',
     'UpdateVisitRequest',
+    'VisitResponse', 
     
-    # Response DTOs
+    # Basic Info DTOs
     'CustomerBasicInfo',
-    'SalespersonBasicInfo', 
-    'VisitFileResponse',
-    'VisitResponse',
-    'VisitListResponse',
-    'VisitListResult',
+    'SalespersonBasicInfo',
     
-    # Filter and Utility DTOs
+    # Filter and Utils DTOs
     'VisitFilterRequest',
     'VisitStatsResponse',
     'FileUploadRequest',
-    'BulkVisitUpdateRequest'
+    'BulkVisitUpdateRequest',
+    
+    # File DTOs
+    'VisitFileResponse',
+    'VisitFileUploadRequest',
+    'VisitFileListResponse',
+    'FileUploadResponse',
+    'FileDeleteResponse'
 ]

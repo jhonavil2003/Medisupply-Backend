@@ -1,35 +1,34 @@
+from src.session import db
 from sqlalchemy import Column, Integer, String, Date, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from src.session import Base
 from datetime import datetime, date
 from typing import List, Optional
 
-
-class Salesperson(Base):
+class Salesperson(db.Model):
     """Entidad Salesperson - Representa un vendedor en el sistema"""
     
     __tablename__ = 'salespersons'
 
     # Primary Key
-    id: int = Column(Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
     
     # Basic Information
-    employee_id: str = Column(String(50), unique=True, nullable=False, index=True)
-    first_name: str = Column(String(100), nullable=False)
-    last_name: str = Column(String(100), nullable=False)
-    email: str = Column(String(150), unique=True, nullable=False)
-    phone: Optional[str] = Column(String(20), nullable=True)
-    territory: Optional[str] = Column(String(100), nullable=True)
-    hire_date: Optional[date] = Column(Date, nullable=True)
-    is_active: bool = Column(Boolean, nullable=False, default=True, index=True)
+    employee_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    territory = db.Column(db.String(100), nullable=True)
+    hire_date = db.Column(db.Date, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
     
     # Timestamps
-    created_at: datetime = Column(DateTime, default=func.now(), nullable=False)
-    updated_at: datetime = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp(), nullable=False)
 
     # Relationships - Lazy loading similar to JPA
-    visits: List['Visit'] = relationship("Visit", back_populates="salesperson", lazy="dynamic")
+    visits = db.relationship("Visit", foreign_keys="Visit.salesperson_id", lazy="dynamic")
 
     def __init__(self, employee_id: str = None, first_name: str = None, last_name: str = None, 
                  email: str = None, phone: str = None, territory: str = None, 
