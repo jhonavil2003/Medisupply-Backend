@@ -4,7 +4,7 @@ from src.commands.get_customer_by_id import GetCustomerById
 from src.commands.create_customer import CreateCustomer
 from src.commands.validate_document import ValidateDocument
 
-customers_bp = Blueprint('customers', __name__, url_prefix='/api/customers')
+customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
 
 @customers_bp.route('', methods=['POST'])

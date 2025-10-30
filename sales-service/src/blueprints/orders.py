@@ -6,7 +6,7 @@ from src.commands.update_order import UpdateOrder
 from src.commands.delete_order import DeleteOrder
 from src.errors.errors import NotFoundError, ApiError, ValidationError, ForbiddenError, DatabaseError
 
-orders_bp = Blueprint('orders', __name__, url_prefix='/api/orders')
+orders_bp = Blueprint('orders', __name__, url_prefix='/orders')
 
 
 @orders_bp.route('', methods=['POST'])
