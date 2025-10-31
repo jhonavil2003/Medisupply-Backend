@@ -1,3 +1,4 @@
+import pytest
 from src.websockets.websocket_manager import InventoryNotifier
 
 @pytest.fixture
@@ -23,3 +24,4 @@ def test_notify_out_of_stock(mock_socketio):
 
 def test_notify_restock(mock_socketio):
     InventoryNotifier.notify_restock("SKU-1", {"product_sku": "SKU-1"})
+
