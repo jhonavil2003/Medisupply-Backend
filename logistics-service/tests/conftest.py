@@ -23,8 +23,11 @@ def app():
         'SQLALCHEMY_TRACK_MODIFICATIONS': False
     }
     
-    app = create_app(config=config)
-    
+    app_obj = create_app(config=config)
+    if isinstance(app_obj, tuple):
+        app = app_obj[0]
+    else:
+        app = app_obj
     with app.app_context():
         _db.create_all()
         yield app
