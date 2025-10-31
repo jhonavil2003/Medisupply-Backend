@@ -1,4 +1,3 @@
-import pytest
 from src.websockets.websocket_manager import InventoryNotifier
 
 def test_notify_stock_change_runs(monkeypatch):
