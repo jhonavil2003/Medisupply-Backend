@@ -95,7 +95,11 @@ class TestHealthCheckEndpoint:
             response = client.post('/inventory', json={})
             assert response.status_code in (400, 500)
             data = json.loads(response.data)
-            assert 'body' in data.get('error', '') or 'product_sku is required' in data.get('error', '') or 'distribution_center_id is required' in data.get('error', '')
+            assert (
+                'body' in data.get('error', '') or
+                'product_sku is required' in data.get('error', '') or
+                'distribution_center_id is required' in data.get('error', '')
+            )
 
         def test_create_inventory_duplicate(self, client, sample_inventory):
             # sample_inventory fixture creates an inventory for JER-001 in center 1
