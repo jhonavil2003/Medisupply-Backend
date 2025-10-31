@@ -78,3 +78,67 @@ class TestHealthCheckEndpoint:
         data = json.loads(response.data)
         assert data['status'] == 'healthy'
         assert data['service'] == 'logistics-service'
+
+    class TestInventoryCreateAndUpdate:
+        def test_create_inventory_missing_body(self, client):
+            response = client.post('/inventory', data=None)
+            assert response.status_code in (400, 415, 500)
+            data = json.loads(response.data)
+            error_msg = data.get('error', '')
+            assert (
+                'body' in error_msg or
+                'Request body is required' in error_msg or
+                'Unsupported Media Type' in error_msg
+            )
+
+        def test_create_inventory_missing_fields(self, client):
+            response = client.post('/inventory', json={})
+            assert response.status_code in (400, 500)
+            data = json.loads(response.data)
+            assert 'body' in data.get('error', '') or 'product_sku is required' in data.get('error', '') or 'distribution_center_id is required' in data.get('error', '')
+
+        def test_create_inventory_duplicate(self, client, sample_inventory):
+            # sample_inventory fixture creates an inventory for JER-001 in center 1
+            payload = {
+                "product_sku": "JER-001",
+                "distribution_center_id": 1,
+                "quantity_available": 100
+            }
+            response = client.post('/inventory', json=payload)
+            assert response.status_code == 400 or response.status_code == 409
+            data = json.loads(response.data)
+            assert 'already exists' in data.get('error', '')
+
+        def test_update_inventory_missing_body(self, client):
+            response = client.put('/inventory/JER-001/update', data=None)
+            assert response.status_code in (400, 415, 500)
+            data = json.loads(response.data)
+            error_msg = data.get('error', '')
+            assert (
+                'body' in error_msg or
+                'Se requiere el body' in error_msg or
+                'Unsupported Media Type' in error_msg
+            )
+
+        def test_update_inventory_no_fields(self, client):
+            response = client.put('/inventory/JER-001/update', json={"distribution_center_id": 1})
+            assert response.status_code == 400
+            data = json.loads(response.data)
+            assert 'al menos uno' in data.get('error', '')
+
+        def test_update_inventory_not_found(self, client):
+            response = client.put('/inventory/NOEXISTE/update', json={"distribution_center_id": 1, "quantity_available": 10})
+            assert response.status_code == 404
+            data = json.loads(response.data)
+            assert 'No se encontró inventario' in data.get('error', '')
+
+        def test_update_inventory_trigger_websocket_false(self, client, sample_inventory):
+            payload = {
+                "distribution_center_id": 1,
+                "quantity_available": 99,
+                "trigger_websocket": False
+            }
+            response = client.put('/inventory/JER-001/update', json=payload)
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data['data']['websocket_notification_sent'] is False
