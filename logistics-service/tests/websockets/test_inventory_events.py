@@ -26,7 +26,7 @@ def test_track_inventory_change_not_significant(monkeypatch):
 
 def test_track_inventory_change_auto_publish(monkeypatch):
     from src.websockets.inventory_events import track_inventory_change, InventoryEventPublisher
-    monkeypatch.setattr(InventoryEventPublisher, "publish", lambda e: setattr(e, "published", True))
+    monkeypatch.setattr(InventoryEventPublisher, "publish", lambda e: (setattr(e, "published", True), None)[1])
     event = track_inventory_change("SKU-1", 10, 0, auto_publish=True)
     assert hasattr(event, "published")
 
