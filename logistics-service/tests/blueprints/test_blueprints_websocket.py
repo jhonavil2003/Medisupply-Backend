@@ -1,5 +1,3 @@
-import pytest
-
 def test_websocket_health(client):
     response = client.get('/websocket/health')
     assert response.status_code == 200
