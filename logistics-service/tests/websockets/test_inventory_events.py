@@ -1,4 +1,3 @@
-import pytest
 from src.websockets.inventory_events import InventoryEvent, InventoryEventDetector
 
 def test_inventory_event_to_dict():
