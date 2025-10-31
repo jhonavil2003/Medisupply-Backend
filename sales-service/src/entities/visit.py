@@ -18,7 +18,7 @@ class Visit(db.Model):
     address = db.Column(db.String(500))
     latitude = db.Column(db.DECIMAL(10, 8))
     longitude = db.Column(db.DECIMAL(11, 8))
-    status = db.Column(db.Enum(VisitStatus, name='visit_status'), nullable=False, default=VisitStatus.SCHEDULED)
+    status = db.Column(db.Enum(VisitStatus, name='visit_status'), nullable=False, default=VisitStatus.PROGRAMADA)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
 

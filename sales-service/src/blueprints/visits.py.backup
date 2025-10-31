@@ -1,15 +1,22 @@
+"""
+Blueprint para gestión de visitas
+Endpoints CRUD para visitas a clientes
+"""
+
 from flask import Blueprint, request, jsonify
-from ..entities.visit import Visit
-from ..entities.visit_status import VisitStatus
-from ..models.customer import Customer
-from ..entities.salesperson import Salesperson
-from ..session import db
-from datetime import datetime
+from datetime import datetime, date, time
+from src.entities.visit import Visit
+from src.entities.salesperson import Salesperson
+from src.models.customer import Customer
+from src.entities.visit_status import VisitStatus
+from src.session import db
+from sqlalchemy.exc import NoResultFound
+from sqlalchemy import and_, or_
 
 visits_bp = Blueprint('visits', __name__, url_prefix='/visits')
 
 
-@visits_bp.route('/', methods=['POST'])
+@visits_bp.route('', methods=['POST'])
 def create_visit():
     """Crear una nueva visita"""
     try:
@@ -66,28 +73,36 @@ def create_visit():
         return jsonify({'error': f'Error al crear visita: {str(e)}'}), 500
 
 
-@visits_bp.route('/', methods=['GET'])
+@visits_bp.route('', methods=['GET'])
 def get_visits():
-    """Obtener todas las visitas con filtros opcionales"""
+    """Obtener lista de visitas con filtros opcionales"""
     try:
-        customer_id = request.args.get('customer_id')
-        salesperson_id = request.args.get('salesperson_id')
+        # Parámetros de consulta
+        customer_id = request.args.get('customer_id', type=int)
+        salesperson_id = request.args.get('salesperson_id', type=int)
         status = request.args.get('status')
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
         
+        # Construir query
         query = Visit.query
         
+        # Aplicar filtros
         if customer_id:
-            query = query.filter_by(customer_id=customer_id)
+            query = query.filter(Visit.customer_id == customer_id)
         if salesperson_id:
-            query = query.filter_by(salesperson_id=salesperson_id)
+            query = query.filter(Visit.salesperson_id == salesperson_id)
         if status:
-            try:
-                status_enum = VisitStatus(status.upper())
-                query = query.filter_by(status=status_enum)
-            except ValueError:
-                return jsonify({'error': 'Estado de visita inválido'}), 400
+            query = query.filter(Visit.status == VisitStatus(status))
+        if date_from:
+            date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d').date()
+            query = query.filter(Visit.visit_date >= date_from_parsed)
+        if date_to:
+            date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d').date()
+            query = query.filter(Visit.visit_date <= date_to_parsed)
         
-        visits = query.all()
+        # Ordenar por fecha
+        visits = query.order_by(Visit.visit_date.desc(), Visit.visit_time.desc()).all()
         
         return jsonify({
             'visits': [visit.to_dict() for visit in visits],
@@ -99,14 +114,14 @@ def get_visits():
 
 
 @visits_bp.route('/<int:visit_id>', methods=['GET'])
-def get_visit(visit_id):
+def get_visit_by_id(visit_id):
     """Obtener una visita por ID"""
     try:
         visit = Visit.query.get(visit_id)
         if not visit:
             return jsonify({'error': 'Visita no encontrada'}), 404
         
-        return jsonify(visit.to_dict()), 200
+        return jsonify(visit.to_dict(include_files=True)), 200
         
     except Exception as e:
         return jsonify({'error': f'Error al obtener visita: {str(e)}'}), 500
@@ -159,9 +174,8 @@ def update_visit(visit_id):
             visit.latitude = data['latitude']
         if 'longitude' in data:
             visit.longitude = data['longitude']
-            
         # El status no se puede cambiar directamente en edición
-        # Para cambiar status, usar endpoints específicos: /complete, /mark-deleted, /restore
+        # Para cambiar status, usar endpoints específicos: /complete, /delete, /restore
         if 'status' in data:
             # Ignorar el campo status y mantener el estado actual
             pass
@@ -181,7 +195,7 @@ def update_visit(visit_id):
 
 @visits_bp.route('/<int:visit_id>', methods=['DELETE'])
 def delete_visit(visit_id):
-    """Eliminar una visita (eliminación física)"""
+    """Eliminar una visita"""
     try:
         visit = Visit.query.get(visit_id)
         if not visit:
@@ -190,7 +204,9 @@ def delete_visit(visit_id):
         db.session.delete(visit)
         db.session.commit()
         
-        return jsonify({'message': 'Visita eliminada exitosamente'}), 200
+        return jsonify({
+            'message': 'Visita eliminada exitosamente'
+        }), 200
         
     except Exception as e:
         db.session.rollback()
@@ -201,7 +217,7 @@ def delete_visit(visit_id):
 def get_visits_by_salesperson(salesperson_id):
     """Obtener visitas por vendedor"""
     try:
-        # Verificar que el vendedor existe
+        # Validar que el vendedor existe
         salesperson = Salesperson.query.get(salesperson_id)
         if not salesperson:
             return jsonify({'error': 'Vendedor no encontrado'}), 404
@@ -209,8 +225,7 @@ def get_visits_by_salesperson(salesperson_id):
         visits = Visit.query.filter_by(salesperson_id=salesperson_id).all()
         
         return jsonify({
-            'salesperson_id': salesperson_id,
-            'salesperson_name': f"{salesperson.first_name} {salesperson.last_name}",
+            'salesperson': salesperson.to_dict(),
             'visits': [visit.to_dict() for visit in visits],
             'total': len(visits)
         }), 200
@@ -223,7 +238,7 @@ def get_visits_by_salesperson(salesperson_id):
 def get_visits_by_customer(customer_id):
     """Obtener visitas por cliente"""
     try:
-        # Verificar que el cliente existe
+        # Validar que el cliente existe
         customer = Customer.query.get(customer_id)
         if not customer:
             return jsonify({'error': 'Cliente no encontrado'}), 404
@@ -231,8 +246,7 @@ def get_visits_by_customer(customer_id):
         visits = Visit.query.filter_by(customer_id=customer_id).all()
         
         return jsonify({
-            'customer_id': customer_id,
-            'customer_name': customer.name,
+            'customer': customer.to_dict(),
             'visits': [visit.to_dict() for visit in visits],
             'total': len(visits)
         }), 200
@@ -277,6 +291,7 @@ def complete_visit(visit_id):
         visit.status = VisitStatus.COMPLETADA
         
         # Actualizar fecha de modificación
+        from datetime import datetime
         visit.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -306,6 +321,7 @@ def mark_visit_deleted(visit_id):
         visit.status = VisitStatus.ELIMINADA
         
         # Actualizar fecha de modificación
+        from datetime import datetime
         visit.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -335,6 +351,7 @@ def restore_visit(visit_id):
         visit.status = VisitStatus.PROGRAMADA
         
         # Actualizar fecha de modificación
+        from datetime import datetime
         visit.updated_at = datetime.utcnow()
         
         db.session.commit()
