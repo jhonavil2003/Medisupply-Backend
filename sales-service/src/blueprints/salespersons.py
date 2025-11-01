@@ -12,7 +12,7 @@ from sqlalchemy.exc import NoResultFound
 salespersons_bp = Blueprint('salespersons', __name__, url_prefix='/salespersons')
 
 
-@salespersons_bp.route('', methods=['POST'])
+@salespersons_bp.route('/', methods=['POST'])
 def create_salesperson():
     """Crear un nuevo vendedor"""
     try:
@@ -67,7 +67,7 @@ def create_salesperson():
         return jsonify({'error': f'Error al crear vendedor: {str(e)}'}), 500
 
 
-@salespersons_bp.route('', methods=['GET'])
+@salespersons_bp.route('/', methods=['GET'])
 def get_salespersons():
     """Obtener lista de vendedores con filtros opcionales"""
     try:
