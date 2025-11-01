@@ -161,7 +161,7 @@ def update_visit(visit_id):
             visit.longitude = data['longitude']
             
         # El status no se puede cambiar directamente en edición
-        # Para cambiar status, usar endpoints específicos: /complete, /mark-deleted, /restore
+        # Para cambiar status, usar endpoints específicos: /complete, /mark-deleted
         if 'status' in data:
             # Ignorar el campo status y mantener el estado actual
             pass
@@ -318,32 +318,3 @@ def mark_visit_deleted(visit_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Error al eliminar visita: {str(e)}'}), 500
-
-
-@visits_bp.route('/<int:visit_id>/restore', methods=['POST'])
-def restore_visit(visit_id):
-    """Restaurar una visita eliminada (vuelve a PROGRAMADA)"""
-    try:
-        visit = Visit.query.get_or_404(visit_id)
-        
-        # Solo se pueden restaurar visitas eliminadas
-        if visit.status != VisitStatus.ELIMINADA:
-            return jsonify({
-                'error': 'Solo se pueden restaurar visitas eliminadas'
-            }), 400
-        
-        visit.status = VisitStatus.PROGRAMADA
-        
-        # Actualizar fecha de modificación
-        visit.updated_at = datetime.utcnow()
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Visita restaurada exitosamente',
-            'visit': visit.to_dict()
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'Error al restaurar visita: {str(e)}'}), 500

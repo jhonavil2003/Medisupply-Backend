@@ -33,7 +33,7 @@ class CreateVisitRequest(BaseModel):
         schema_extra = {
             "example": {
                 "customer_id": 1,
-                "salesperson_id": 1,
+                "salesperson_id": 2,
                 "visit_date": "2025-10-30",
                 "visit_time": "14:30:00",
                 "contacted_persons": "Dr. María González, Jefe de Compras",
