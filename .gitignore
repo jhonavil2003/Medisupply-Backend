@@ -216,3 +216,17 @@ catalog.sql
 *.sql
 
 .idea
+
+# Visit system documentation files
+VISITS_AND_FILES_API_DOCUMENTATION.md
+VISITS_API_DOCUMENTATION.md
+
+# Visit system seed data
+seed_sales_visits.py
+*/seed_sales_visits.py
+**/seed_sales_visits.py
+
+# Upload directories
+uploads/
+*/uploads/
+**/uploads/
