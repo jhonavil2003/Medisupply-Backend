@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify
 from src.commands.get_products import GetProducts
-from src.commands.get_product_by_sku import GetProductBySKU
+from src.commands.get_product_by_id import GetProductById
+from src.commands.create_product import CreateProduct
+from src.commands.update_product import UpdateProduct
+from src.commands.delete_product import DeleteProduct
 from src.errors.errors import ApiError, ValidationError
 
 products_bp = Blueprint('products', __name__, url_prefix='/products')
@@ -76,16 +79,73 @@ def list_products():
         raise ApiError(f"Error retrieving products: {str(e)}", status_code=500)
 
 
-@products_bp.route('/<string:sku>', methods=['GET'])
-def get_product_by_sku(sku):
+@products_bp.route('', methods=['POST'])
+def create_product():
     """
-    GET /products/{sku}
+    POST /products
     
-    Get detailed information about a specific product by SKU
+    Create a new product
+    
+    Request Body:
+    {
+        "sku": "string (required)",
+        "name": "string (required)",
+        "description": "string (optional)",
+        "category": "string (required)",
+        "subcategory": "string (optional)",
+        "unit_price": "number (required)",
+        "currency": "string (optional, default: USD)",
+        "unit_of_measure": "string (required)",
+        "supplier_id": "integer (required)",
+        "requires_cold_chain": "boolean (optional, default: false)",
+        "storage_temperature_min": "number (optional)",
+        "storage_temperature_max": "number (optional)",
+        "storage_humidity_max": "number (optional)",
+        "sanitary_registration": "string (optional)",
+        "requires_prescription": "boolean (optional, default: false)",
+        "regulatory_class": "string (optional)",
+        "weight_kg": "number (optional)",
+        "length_cm": "number (optional)",
+        "width_cm": "number (optional)",
+        "height_cm": "number (optional)",
+        "manufacturer": "string (optional)",
+        "country_of_origin": "string (optional)",
+        "barcode": "string (optional)",
+        "image_url": "string (optional)"
+    }
+    
+    Returns:
+    - 201: Product created successfully
+    - 400: Validation error
+    - 500: Server error
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            raise ValidationError("Request body is required")
+        
+        command = CreateProduct(data)
+        result = command.execute()
+        
+        return jsonify(result), 201
+        
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ApiError(f"Error creating product: {str(e)}", status_code=500)
+
+
+@products_bp.route('/<int:product_id>', methods=['GET'])
+def get_product_by_id(product_id):
+    """
+    GET /products/{product_id}
+    
+    Get detailed information about a specific product by ID
     Includes certifications and regulatory conditions
     
     Path Parameters:
-    - sku: Product SKU (required)
+    - product_id: Product ID (required)
     
     Returns:
     - 200: Product details
@@ -93,10 +153,10 @@ def get_product_by_sku(sku):
     - 500: Server error
     
     Example:
-    GET /products/MED-12345
+    GET /products/12
     """
     try:
-        command = GetProductBySKU(sku=sku)
+        command = GetProductById(product_id=product_id)
         result = command.execute()
         
         return jsonify(result), 200
@@ -107,6 +167,81 @@ def get_product_by_sku(sku):
         raise ValidationError(str(e))
     except Exception as e:
         raise ApiError(f"Error retrieving product: {str(e)}", status_code=500)
+
+
+@products_bp.route('/<int:product_id>', methods=['PUT'])
+def update_product(product_id):
+    """
+    PUT /products/{product_id}
+    
+    Update an existing product
+    
+    Path Parameters:
+    - product_id: Product ID (required)
+    
+    Request Body: Same as POST but all fields are optional
+    
+    Returns:
+    - 200: Product updated successfully
+    - 400: Validation error
+    - 404: Product not found
+    - 500: Server error
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            raise ValidationError("Request body is required")
+        
+        command = UpdateProduct(product_id, data)
+        result = command.execute()
+        
+        return jsonify(result), 200
+        
+    except ApiError as e:
+        raise e
+    except ValidationError as e:
+        raise e
+    except Exception as e:
+        raise ApiError(f"Error updating product: {str(e)}", status_code=500)
+
+
+@products_bp.route('/<int:product_id>', methods=['DELETE'])
+def delete_product(product_id):
+    """
+    DELETE /products/{product_id}
+    
+    Delete (deactivate) a product
+    
+    Path Parameters:
+    - product_id: Product ID (required)
+    
+    Query Parameters:
+    - hard_delete: true/false (optional, default: false)
+      If true, permanently removes the product from database
+      If false, performs soft delete (sets is_active=false)
+    
+    Returns:
+    - 200: Product deleted successfully
+    - 404: Product not found
+    - 500: Server error
+    """
+    try:
+        hard_delete = request.args.get('hard_delete', 'false').lower() == 'true'
+        
+        command = DeleteProduct(product_id)
+        
+        if hard_delete:
+            result = command.execute_hard_delete()
+        else:
+            result = command.execute()
+        
+        return jsonify(result), 200
+        
+    except ApiError as e:
+        raise e
+    except Exception as e:
+        raise ApiError(f"Error deleting product: {str(e)}", status_code=500)
 
 
 # Health check endpoint
