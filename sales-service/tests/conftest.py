@@ -13,6 +13,12 @@ from src.models.customer import Customer
 from src.models.order import Order
 from src.models.order_item import OrderItem
 
+# Import visit entities
+from src.entities.visit import Visit
+from src.entities.salesperson import Salesperson
+from src.entities.visit_status import VisitStatus
+from src.entities.visit_file import VisitFile
+
 
 @pytest.fixture(scope='function')
 def app():
@@ -321,3 +327,187 @@ def multiple_orders(db, sample_customer, sample_customer_2):
     
     db.session.commit()
     return orders
+
+
+# Visit-related fixtures
+@pytest.fixture(scope='function')
+def sample_salesperson(db):
+    """Create a sample salesperson for testing."""
+    from datetime import date
+    salesperson = Salesperson(
+        employee_id='SELLER-001',
+        first_name='Juan',
+        last_name='Pérez',
+        email='juan.perez@medisupply.com',
+        phone='+57 300 1234567',
+        territory='Bogotá Norte',
+        hire_date=date(2023, 1, 15),
+        is_active=True
+    )
+    db.session.add(salesperson)
+    db.session.commit()
+    return salesperson
+
+
+@pytest.fixture(scope='function')
+def sample_salesperson_2(db):
+    """Create a second sample salesperson for testing."""
+    from datetime import date
+    salesperson = Salesperson(
+        employee_id='SELLER-002',
+        first_name='María',
+        last_name='González',
+        email='maria.gonzalez@medisupply.com',
+        phone='+57 300 7654321',
+        territory='Medellín Centro',
+        hire_date=date(2023, 3, 10),
+        is_active=True
+    )
+    db.session.add(salesperson)
+    db.session.commit()
+    return salesperson
+
+
+@pytest.fixture(scope='function')
+def sample_visit(db, sample_customer, sample_salesperson):
+    """Create a sample visit for testing."""
+    from datetime import date, time
+    from decimal import Decimal
+    
+    visit = Visit(
+        customer_id=sample_customer.id,
+        salesperson_id=sample_salesperson.id,
+        visit_date=date(2025, 11, 15),
+        visit_time=time(10, 30),
+        contacted_persons='Dr. Juan Pérez, Jefe de Compras',
+        clinical_findings='Necesitan reposición de inventario médico',
+        additional_notes='Cliente interesado en productos ortopédicos',
+        address='Calle 10 #5-25, Bogotá',
+        latitude=Decimal('4.60971'),
+        longitude=Decimal('-74.08175'),
+        status=VisitStatus.PROGRAMADA
+    )
+    db.session.add(visit)
+    db.session.commit()
+    return visit
+
+
+@pytest.fixture(scope='function')
+def sample_visit_file(db, sample_visit):
+    """Create a sample visit file for testing."""
+    visit_file = VisitFile(
+        visit_id=sample_visit.id,
+        file_name='test_document.pdf',
+        file_path='/uploads/visits/1/test_document_20251101_100000_abc123.pdf',
+        file_size=1024000,  # 1MB
+        mime_type='application/pdf'
+    )
+    db.session.add(visit_file)
+    db.session.commit()
+    return visit_file
+
+
+@pytest.fixture(scope='function')
+def multiple_visits(db, sample_customer, sample_customer_2, sample_salesperson, sample_salesperson_2):
+    """Create multiple visits for testing."""
+    from datetime import date, time
+    from decimal import Decimal
+    
+    visits = []
+    
+    # Visit 1 - PROGRAMADA
+    visit1 = Visit(
+        customer_id=sample_customer.id,
+        salesperson_id=sample_salesperson.id,
+        visit_date=date(2025, 11, 10),
+        visit_time=time(9, 0),
+        contacted_persons='Dr. Ana López',
+        clinical_findings='Revisión rutinaria',
+        additional_notes='Primera visita del mes',
+        address='Dirección 1',
+        latitude=Decimal('4.60971'),
+        longitude=Decimal('-74.08175'),
+        status=VisitStatus.PROGRAMADA
+    )
+    db.session.add(visit1)
+    visits.append(visit1)
+    
+    # Visit 2 - COMPLETADA
+    visit2 = Visit(
+        customer_id=sample_customer_2.id,
+        salesperson_id=sample_salesperson_2.id,
+        visit_date=date(2025, 11, 8),
+        visit_time=time(14, 30),
+        contacted_persons='Dr. Carlos Ruiz',
+        clinical_findings='Inventario completo',
+        additional_notes='Visita exitosa',
+        address='Dirección 2',
+        latitude=Decimal('6.25184'),
+        longitude=Decimal('-75.56359'),
+        status=VisitStatus.COMPLETADA
+    )
+    db.session.add(visit2)
+    visits.append(visit2)
+    
+    # Visit 3 - ELIMINADA
+    visit3 = Visit(
+        customer_id=sample_customer.id,
+        salesperson_id=sample_salesperson.id,
+        visit_date=date(2025, 11, 5),
+        visit_time=time(11, 0),
+        contacted_persons='Dr. Luis Martín',
+        clinical_findings='Visita cancelada',
+        additional_notes='Cliente no disponible',
+        address='Dirección 3',
+        status=VisitStatus.ELIMINADA
+    )
+    db.session.add(visit3)
+    visits.append(visit3)
+    
+    db.session.commit()
+    return visits
+
+
+@pytest.fixture(scope='function')
+def multiple_salespersons(db):
+    """Create multiple salespersons for testing."""
+    from datetime import date
+    
+    salespersons = [
+        Salesperson(
+            employee_id='SELLER-100',
+            first_name='Pedro',
+            last_name='Ramírez',
+            email='pedro.ramirez@medisupply.com',
+            phone='+57 301 1111111',
+            territory='Bogotá Sur',
+            hire_date=date(2022, 6, 1),
+            is_active=True
+        ),
+        Salesperson(
+            employee_id='SELLER-101',
+            first_name='Ana',
+            last_name='Torres',
+            email='ana.torres@medisupply.com',
+            phone='+57 302 2222222',
+            territory='Cali Norte',
+            hire_date=date(2023, 8, 15),
+            is_active=True
+        ),
+        Salesperson(
+            employee_id='SELLER-102',
+            first_name='Carlos',
+            last_name='Mendoza',
+            email='carlos.mendoza@medisupply.com',
+            phone='+57 303 3333333',
+            territory='Barranquilla',
+            hire_date=date(2021, 2, 20),
+            is_active=False
+        )
+    ]
+    
+    for salesperson in salespersons:
+        db.session.add(salesperson)
+    
+    db.session.commit()
+    return salespersons

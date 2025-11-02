@@ -21,7 +21,7 @@ services:
     volumes:
       - catalog_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cataloguser"]
+      test: ["CMD-SHELL", "pg_isready -U cataloguser -d catalog_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +65,7 @@ services:
     volumes:
       - logistics_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logisticsuser"]
+      test: ["CMD-SHELL", "pg_isready -U logisticsuser -d logistics_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -117,7 +117,7 @@ services:
     volumes:
       - sales_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U salesuser"]
+      test: ["CMD-SHELL", "pg_isready -U salesuser -d sales_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -138,6 +138,7 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:3001
       LOGISTICS_SERVICE_URL: http://logistics-service:3002
       EXTERNAL_SERVICE_TIMEOUT: 3
+      UPLOAD_FOLDER: uploads
       PYTHONPATH: /app
     depends_on:
       sales-db:
@@ -149,6 +150,8 @@ services:
     networks:
       - medisupply-network
     command: python -m src.main
+
+
 
 volumes:
   catalog_data:
