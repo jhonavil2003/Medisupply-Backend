@@ -140,6 +140,12 @@ def sample_regulatory_condition(db, sample_product):
 
 
 @pytest.fixture
+def sample_product_with_relationships(db, sample_product, sample_certification, sample_regulatory_condition):
+    """Product with relationships already loaded"""
+    return sample_product
+
+
+@pytest.fixture
 def multiple_products(db, sample_supplier):
     products = [
         Product(
