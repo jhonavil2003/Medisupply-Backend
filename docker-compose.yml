@@ -86,7 +86,7 @@ services:
       PORT: 3002
       PYTHONPATH: /app
       # HU-077 - Route Optimization
-      GOOGLE_MAPS_API_KEY: AIzaSyBqLonTXTP3G11rNtUkB9gFBMxEVRuR7hg
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
       GOOGLE_MAPS_GEOCODING_ENABLED: "true"
       GOOGLE_MAPS_DISTANCE_MATRIX_ENABLED: "true"
       SALES_SERVICE_URL: http://sales-service:3003
