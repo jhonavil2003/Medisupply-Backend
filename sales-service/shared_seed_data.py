@@ -2,7 +2,7 @@
 Shared seed data constants for all microservices.
 This ensures data consistency across catalog, logistics, and sales services.
 """
-from datetime import date, datetime, timedelta
+from datetime import date
 from decimal import Decimal
 
 # ============================================================================
