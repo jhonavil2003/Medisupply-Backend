@@ -85,6 +85,14 @@ services:
       HOST: 0.0.0.0
       PORT: 3002
       PYTHONPATH: /app
+      # HU-077 - Route Optimization
+      GOOGLE_MAPS_API_KEY: AIzaSyBqLonTXTP3G11rNtUkB9gFBMxEVRuR7hg
+      GOOGLE_MAPS_GEOCODING_ENABLED: "true"
+      GOOGLE_MAPS_DISTANCE_MATRIX_ENABLED: "true"
+      SALES_SERVICE_URL: http://sales-service:3003
+      VRP_MAX_EXECUTION_TIME_SECONDS: 30
+      VRP_OPTIMIZATION_STRATEGY: balanced
+      ENABLE_ROUTE_CACHING: "true"
     depends_on:
       logistics-db:
         condition: service_healthy
@@ -135,8 +143,6 @@ services:
       sales-db:
         condition: service_healthy
       catalog-service:
-        condition: service_started
-      logistics-service:
         condition: service_started
     volumes:
       - ./sales-service/src:/app/src
