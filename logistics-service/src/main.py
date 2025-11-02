@@ -3,6 +3,7 @@ from flask import Flask
 from src.session import db, init_db
 from src.blueprints.inventory import inventory_bp
 from src.blueprints.websocket import websocket_bp
+from src.blueprints.routes import routes_bp, vehicles_bp
 from src.websockets.websocket_manager import init_socketio
 from src.errors.errors import register_error_handlers
 
@@ -27,6 +28,8 @@ def create_app(config=None):
     # Registrar blueprints
     app.register_blueprint(inventory_bp)
     app.register_blueprint(websocket_bp)
+    app.register_blueprint(routes_bp)
+    app.register_blueprint(vehicles_bp)
     
     # Inicializar WebSocket
     socketio = init_socketio(app)

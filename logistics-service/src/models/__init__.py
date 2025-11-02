@@ -2,3 +2,8 @@ from .distribution_center import DistributionCenter
 from .inventory import Inventory
 from .warehouse_location import WarehouseLocation
 from .product_batch import ProductBatch
+from .vehicle import Vehicle
+from .delivery_route import DeliveryRoute
+from .route_stop import RouteStop
+from .route_assignment import RouteAssignment
+from .geocoded_address import GeocodedAddress
