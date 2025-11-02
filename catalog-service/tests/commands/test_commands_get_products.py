@@ -89,3 +89,12 @@ class TestGetProductsCommand:
         
         assert len(result['products']) == 0
         assert result['pagination']['total_items'] == 0
+
+    def test_get_products_filter_by_sku(self, db, multiple_products):
+        """Test filtering products by SKU"""
+        command = GetProducts(sku='JER')  # Should match JER-001
+        result = command.execute()
+        
+        assert len(result['products']) == 1
+        assert result['products'][0]['sku'] == 'JER-001'
+        assert 'JER' in result['products'][0]['sku']
