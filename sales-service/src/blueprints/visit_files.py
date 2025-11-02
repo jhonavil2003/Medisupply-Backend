@@ -61,7 +61,7 @@ def upload_visit_file(file_data: VisitFileUploadRequest, file_path: str, stored_
         file_path=visit_file.file_path,
         file_size=visit_file.file_size,
         mime_type=visit_file.mime_type,
-        upload_date=visit_file.uploaded_at
+        uploaded_at=visit_file.uploaded_at
     )
 
 
@@ -85,7 +85,7 @@ def get_files_by_visit(visit_id: int) -> List[VisitFileResponse]:
             file_path=file.file_path,
             file_size=file.file_size,
             mime_type=file.mime_type,
-            upload_date=file.uploaded_at
+            uploaded_at=file.uploaded_at
         )
         for file in files
     ]
@@ -106,7 +106,7 @@ def get_file_by_id(file_id: int, visit_id: int) -> VisitFileResponse:
             file_path=file.file_path,
             file_size=file.file_size,
             mime_type=file.mime_type,
-            upload_date=file.uploaded_at
+            uploaded_at=file.uploaded_at
         )
     except NoResultFound:
         raise NotFoundError(f"El archivo con ID {file_id} no existe en la visita {visit_id}")

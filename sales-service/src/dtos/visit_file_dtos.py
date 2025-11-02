@@ -12,7 +12,7 @@ class VisitFileResponse(BaseModel):
     file_path: str = Field(..., description="Ruta del archivo en el servidor")
     file_size: int = Field(..., description="Tamaño del archivo en bytes")
     mime_type: str = Field(..., description="Tipo MIME del archivo")
-    upload_date: datetime = Field(..., description="Fecha y hora de subida")
+    uploaded_at: datetime = Field(..., description="Fecha y hora de subida")
     
     class Config:
         from_attributes = True
@@ -27,7 +27,7 @@ class VisitFileResponse(BaseModel):
                 "file_path": "/uploads/visits/123/inventory_report_20241029_143022.pdf",
                 "file_size": 2048576,
                 "mime_type": "application/pdf",
-                "upload_date": "2024-10-29T14:30:22"
+                "uploaded_at": "2024-10-29T14:30:22"
             }
         }
 
@@ -97,7 +97,7 @@ class VisitFileListResponse(BaseModel):
                         "file_path": "/uploads/visits/123/inventory_report.pdf",
                         "file_size": 2048576,
                         "mime_type": "application/pdf",
-                        "upload_date": "2024-10-29T14:30:22"
+                        "uploaded_at": "2024-10-29T14:30:22"
                     }
                 ],
                 "total_files": 1,
@@ -125,7 +125,7 @@ class FileUploadResponse(BaseModel):
                     "file_path": "/uploads/visits/123/contract.pdf",
                     "file_size": 1024000,
                     "mime_type": "application/pdf",
-                    "upload_date": "2024-10-29T14:30:22"
+                    "uploaded_at": "2024-10-29T14:30:22"
                 }
             }
         }

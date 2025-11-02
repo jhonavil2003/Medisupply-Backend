@@ -187,14 +187,9 @@ def delete_salesperson(salesperson_id):
         from src.entities.visit import Visit
         visits = Visit.query.filter_by(salesperson_id=salesperson_id).first()
         if visits:
-            # Soft delete - marcar como inactivo
-            salesperson.is_active = False
-            salesperson.updated_at = datetime.utcnow()
-            db.session.commit()
-            
             return jsonify({
-                'message': 'Vendedor marcado como inactivo (tiene visitas asociadas)'
-            }), 200
+                'error': 'No se puede eliminar el vendedor porque tiene visitas asociadas'
+            }), 400
         else:
             # Hard delete si no tiene visitas
             db.session.delete(salesperson)

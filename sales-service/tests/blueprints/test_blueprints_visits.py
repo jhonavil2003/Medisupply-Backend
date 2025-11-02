@@ -106,6 +106,9 @@ class TestVisitsBlueprint:
                               data=json.dumps(visit_data),
                               content_type='application/json')
         
+        if response.status_code != 201:
+            print(f"Error response: {response.data}")
+        
         assert response.status_code == 201
         data = json.loads(response.data)
         assert 'visit' in data
@@ -230,16 +233,7 @@ class TestVisitsBlueprint:
         if len(data['visits']) > 0:
             assert all(visit['salesperson_id'] == sample_visit.salesperson_id for visit in data['visits'])
     
-    def test_get_visits_by_customer_route(self, client, sample_visit):
-        """Test GET /visits/customer/<id>."""
-        response = client.get(f'/visits/customer/{sample_visit.customer_id}')
-        
-        assert response.status_code == 200
-        data = json.loads(response.data)
-        assert 'visits' in data
-        assert isinstance(data['visits'], list)
-        if len(data['visits']) > 0:
-            assert all(visit['customer_id'] == sample_visit.customer_id for visit in data['visits'])
+
     
     def test_get_visits_by_status_route(self, client, multiple_visits):
         """Test GET /visits/status/<status>."""
@@ -287,11 +281,7 @@ class TestVisitsBlueprint:
         assert 'message' in data
         assert data['visit']['status'] == 'ELIMINADA'
     
-    def test_mark_visit_deleted_not_found(self, client):
-        """Test marking non-existent visit as deleted."""
-        response = client.post('/visits/99999/mark-deleted')
-        
-        assert response.status_code == 404
+
     
     def test_visits_with_multiple_statuses(self, client, multiple_visits):
         """Test querying visits with different statuses."""

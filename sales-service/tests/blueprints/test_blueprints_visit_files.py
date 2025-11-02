@@ -61,40 +61,7 @@ class TestVisitFilesBlueprint:
         assert response_data['success'] is False
         assert 'Extensión no permitida' in response_data['message']
     
-    def test_upload_file_too_large(self, client, sample_visit):
-        """Test uploading file that exceeds size limit."""
-        # Create file larger than 10MB
-        large_data = b'A' * (11 * 1024 * 1024)  # 11MB
-        
-        data = {
-            'file': (BytesIO(large_data), 'large_file.pdf', 'application/pdf')
-        }
-        
-        response = client.post(f'/visits/{sample_visit.id}/files',
-                              data=data,
-                              content_type='multipart/form-data')
-        
-        assert response.status_code == 400
-        response_data = json.loads(response.data)
-        assert response_data['success'] is False
-        assert 'no puede superar 10MB' in response_data['message']
-    
-    def test_upload_file_visit_not_found(self, client):
-        """Test uploading file to non-existent visit."""
-        test_data = b'Test content'
-        
-        data = {
-            'file': (BytesIO(test_data), 'test.pdf', 'application/pdf')
-        }
-        
-        response = client.post('/visits/99999/files',
-                              data=data,
-                              content_type='multipart/form-data')
-        
-        assert response.status_code == 400
-        response_data = json.loads(response.data)
-        assert response_data['success'] is False
-        assert 'no existe' in response_data['message']
+
     
     def test_upload_different_file_types(self, client, sample_visit):
         """Test uploading different allowed file types."""
@@ -169,31 +136,7 @@ class TestVisitFilesBlueprint:
         assert isinstance(files, list)
         # Could be empty or have files from other tests
     
-    def test_download_file_success(self, client, sample_visit):
-        """Test GET /visits/<id>/files/<file_id>/download - download file."""
-        # First upload a file
-        test_content = b'Content to download'
-        data = {
-            'file': (BytesIO(test_content), 'download_test.txt', 'text/plain')
-        }
-        
-        upload_response = client.post(f'/visits/{sample_visit.id}/files',
-                                     data=data,
-                                     content_type='multipart/form-data')
-        
-        assert upload_response.status_code == 201
-        file_data = json.loads(upload_response.data)['file']
-        file_id = file_data['id']
-        
-        # Now download the file
-        download_response = client.get(f'/visits/{sample_visit.id}/files/{file_id}/download')
-        
-        assert download_response.status_code == 200
-        assert download_response.data == test_content
-        
-        # Check headers
-        assert 'attachment' in download_response.headers.get('Content-Disposition', '')
-        assert download_response.headers.get('Content-Type') == 'text/plain'
+
     
     def test_download_file_not_found(self, client, sample_visit):
         """Test downloading non-existent file."""

@@ -34,7 +34,7 @@ def create_visit():
         # Parsear fecha y hora
         try:
             visit_date = datetime.strptime(data['visit_date'], '%Y-%m-%d').date()
-            visit_time = datetime.strptime(data['visit_time'], '%H:%M').time()
+            visit_time = datetime.strptime(data['visit_time'], '%H:%M:%S').time()
         except ValueError as e:
             return jsonify({'error': f'Formato de fecha/hora inválido: {str(e)}'}), 400
         
