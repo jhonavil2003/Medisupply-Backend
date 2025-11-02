@@ -71,5 +71,37 @@ class Inventory(db.Model):
         
         return data
     
+    def update_quantity_available(self, new_quantity: int, auto_notify: bool = True):
+        """
+        Actualiza quantity_available y dispara evento de WebSocket si hay cambio significativo.
+        
+        Args:
+            new_quantity: Nueva cantidad disponible
+            auto_notify: Si True, notifica automáticamente el cambio vía WebSocket
+        """
+        from src.websockets.inventory_events import track_inventory_change
+        
+        previous_quantity = self.quantity_available
+        self.quantity_available = new_quantity
+        self.last_movement_date = datetime.utcnow()
+        
+        if auto_notify:
+            # Rastrear y notificar el cambio
+            track_inventory_change(
+                product_sku=self.product_sku,
+                previous_quantity=previous_quantity,
+                new_quantity=new_quantity,
+                distribution_center_id=self.distribution_center_id,
+                distribution_center_code=self.distribution_center.code if self.distribution_center else None,
+                minimum_stock_level=self.minimum_stock_level,
+                reorder_point=self.reorder_point,
+                metadata={
+                    'inventory_id': self.id,
+                    'quantity_reserved': self.quantity_reserved,
+                    'quantity_in_transit': self.quantity_in_transit
+                },
+                auto_publish=True
+            )
+    
     def __repr__(self):
         return f'<Inventory SKU:{self.product_sku} DC:{self.distribution_center_id} Qty:{self.quantity_available}>'
