@@ -6,7 +6,7 @@ Uso: python test_entities.py
 
 import sys
 import os
-from datetime import date, time, datetime
+from datetime import date, time
 from decimal import Decimal
 
 # Add src to path
@@ -22,7 +22,7 @@ try:
     
     # Test VisitStatus
     print("\n🔍 Testing VisitStatus...")
-    status = VisitStatus.SCHEDULED
+    status = VisitStatus.PROGRAMADA
     print(f"   Status created: {status} (value: {status.value})")
     
     # Test Salesperson
@@ -54,7 +54,7 @@ try:
         address="Calle 10 #5-25, Bogotá",
         latitude=Decimal("4.60971"),
         longitude=Decimal("-74.08175"),
-        status=VisitStatus.SCHEDULED
+        status=VisitStatus.PROGRAMADA
     )
     print(f"   Visit created: {visit}")
     print(f"   Visit date: {visit.get_visit_date()}")
@@ -88,7 +88,7 @@ try:
     
     print("\n✅ Todas las pruebas de entidades pasaron exitosamente!")
     print("\n📋 Resumen de entidades creadas:")
-    print(f"   - VisitStatus: Enum con 3 valores (SCHEDULED, COMPLETED, CANCELLED)")
+    print(f"   - VisitStatus: Enum con 3 valores (PROGRAMADA, COMPLETADA, ELIMINADA)")
     print(f"   - Salesperson: {salesperson.get_full_name()} - {salesperson.get_territory()}")
     print(f"   - Visit: {visit.get_visit_date()} a las {visit.get_visit_time()}")
     print(f"   - VisitFile: {visit_file.get_file_name()} ({visit_file.get_file_size_formatted()})")

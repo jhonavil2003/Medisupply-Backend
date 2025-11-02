@@ -67,3 +67,6 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Seed data files
+shared_seed_data.py

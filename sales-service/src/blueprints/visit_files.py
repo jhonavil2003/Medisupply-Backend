@@ -385,8 +385,6 @@ def delete_file_global(file_id: int):
         if not file:
             raise NotFoundError(f"El archivo con ID {file_id} no existe")
         
-        visit_id = file.visit_id
-        
         # Eliminar archivo físico
         if os.path.exists(file.file_path):
             os.remove(file.file_path)

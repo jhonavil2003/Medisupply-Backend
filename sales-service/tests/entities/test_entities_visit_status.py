@@ -1,4 +1,3 @@
-import pytest
 from src.entities.visit_status import VisitStatus
 
 

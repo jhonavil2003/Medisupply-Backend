@@ -1,6 +1,5 @@
 import pytest
 import json
-from datetime import date
 
 
 class TestSalespersonsBlueprint:

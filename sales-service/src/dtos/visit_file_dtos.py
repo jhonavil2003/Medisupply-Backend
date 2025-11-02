@@ -51,7 +51,7 @@ class VisitFileUploadRequest(BaseModel):
         }
     
     @validator('file_name')
-    def validate_file_name(cls, v):
+    def validate_file_name(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar nombre de archivo"""
         if not v or v.strip() == '':
             raise ValueError('file_name no puede estar vacío')
@@ -70,7 +70,7 @@ class VisitFileUploadRequest(BaseModel):
         return v.strip()
     
     @validator('file_size')
-    def validate_file_size(cls, v):
+    def validate_file_size(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar tamaño de archivo (máximo 10MB)"""
         if v and v > 10 * 1024 * 1024:  # 10MB
             raise ValueError('El archivo no puede superar 10MB')

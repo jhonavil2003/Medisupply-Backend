@@ -8,7 +8,7 @@
 CREATE TABLE visits (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     customer_id BIGINT NOT NULL,
-    salesperson_id VARCHAR(50) NOT NULL,  -- Consistente con orders.seller_id
+    salesperson_id BIGINT NOT NULL,
     visit_date DATE NOT NULL,
     visit_time TIME NOT NULL,
     contacted_persons TEXT,
@@ -17,12 +17,13 @@ CREATE TABLE visits (
     address VARCHAR(500),
     latitude DECIMAL(10, 8),               -- Precisión para coordenadas GPS
     longitude DECIMAL(11, 8),              -- Precisión para coordenadas GPS
-    status ENUM('scheduled', 'completed', 'cancelled') DEFAULT 'scheduled',
+    status ENUM('PROGRAMADA', 'COMPLETADA', 'ELIMINADA') DEFAULT 'PROGRAMADA',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     -- Claves foráneas
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (salesperson_id) REFERENCES salespersons(id) ON DELETE SET NULL,
     
     -- Índices para optimizar consultas comunes
     INDEX idx_customer_visit (customer_id),

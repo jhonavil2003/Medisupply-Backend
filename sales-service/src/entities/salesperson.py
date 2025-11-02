@@ -1,7 +1,4 @@
 from src.session import db
-from sqlalchemy import Column, Integer, String, Date, Boolean, DateTime
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 from datetime import datetime, date
 from typing import List, Optional
 
@@ -118,7 +115,7 @@ class Salesperson(db.Model):
     def get_active_visits_count(self) -> int:
         """Retorna el número de visitas activas (programadas o completadas)"""
         from .visit_status import VisitStatus
-        return len([v for v in self.visits if v.status in [VisitStatus.SCHEDULED, VisitStatus.COMPLETED]])
+        return len([v for v in self.visits if v.status in [VisitStatus.PROGRAMADA, VisitStatus.COMPLETADA]])
 
     def get_territory_display(self) -> str:
         """Retorna el territorio en formato legible"""

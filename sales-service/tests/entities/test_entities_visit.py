@@ -1,5 +1,5 @@
 import pytest
-from datetime import date, time, datetime
+from datetime import date, time
 from decimal import Decimal
 from src.entities.visit import Visit
 from src.entities.visit_status import VisitStatus

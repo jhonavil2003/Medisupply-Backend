@@ -1,8 +1,7 @@
 from pydantic import BaseModel, Field, validator
-from datetime import date, time, datetime
+from datetime import date, time
 from decimal import Decimal
 from typing import Optional
-from src.entities.visit_status import VisitStatus
 
 
 class CreateVisitRequest(BaseModel):
@@ -46,14 +45,14 @@ class CreateVisitRequest(BaseModel):
         }
     
     @validator('visit_date')
-    def validate_visit_date(cls, v):
+    def validate_visit_date(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar que la fecha no sea en el pasado"""
         if v < date.today():
             raise ValueError('La fecha de visita no puede ser en el pasado')
         return v
     
     @validator('visit_time')
-    def validate_visit_time(cls, v):
+    def validate_visit_time(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar horario laboral"""
         if v.hour < 6 or v.hour > 20:
             raise ValueError('Las visitas deben programarse entre 6:00 AM y 8:00 PM')

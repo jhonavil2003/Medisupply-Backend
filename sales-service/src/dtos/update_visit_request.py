@@ -43,7 +43,7 @@ class UpdateVisitRequest(BaseModel):
         }
     
     @validator('visit_date')
-    def validate_visit_date(cls, v):
+    def validate_visit_date(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar que la fecha no sea muy antigua (solo si se proporciona)"""
         if v is not None and v < date.today():
             # Permitir fechas pasadas para visitas completadas
@@ -51,17 +51,17 @@ class UpdateVisitRequest(BaseModel):
         return v
     
     @validator('visit_time')
-    def validate_visit_time(cls, v):
+    def validate_visit_time(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar horario laboral (solo si se proporciona)"""
         if v is not None and (v.hour < 6 or v.hour > 20):
             raise ValueError('Las visitas deben programarse entre 6:00 AM y 8:00 PM')
         return v
     
     @validator('status')
-    def validate_status_transition(cls, v):
+    def validate_status_transition(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar transiciones de estado válidas"""
         if v is not None:
-            valid_statuses = [VisitStatus.SCHEDULED, VisitStatus.COMPLETED, VisitStatus.CANCELLED]
+            valid_statuses = [VisitStatus.PROGRAMADA, VisitStatus.COMPLETADA, VisitStatus.ELIMINADA]
             if v not in valid_statuses:
                 raise ValueError(f'Estado inválido. Valores permitidos: {[s.value for s in valid_statuses]}')
         return v

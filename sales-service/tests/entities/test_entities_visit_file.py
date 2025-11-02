@@ -271,7 +271,6 @@ class TestVisitFileEntity:
     def test_visit_file_cascade_delete(self, db, sample_visit, sample_visit_file):
         """Test that files are deleted when visit is deleted."""
         file_id = sample_visit_file.id
-        visit_id = sample_visit.id
         
         # Verify file exists
         assert VisitFile.query.get(file_id) is not None

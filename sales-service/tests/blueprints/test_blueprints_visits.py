@@ -1,7 +1,4 @@
-import pytest
 import json
-from datetime import date, time
-from decimal import Decimal
 from src.entities.visit_status import VisitStatus
 
 

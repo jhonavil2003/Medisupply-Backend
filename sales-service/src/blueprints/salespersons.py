@@ -4,10 +4,9 @@ Endpoints CRUD para vendedores
 """
 
 from flask import Blueprint, request, jsonify
-from datetime import datetime, date
+from datetime import datetime
 from src.entities.salesperson import Salesperson
 from src.session import db
-from sqlalchemy.exc import NoResultFound
 
 salespersons_bp = Blueprint('salespersons', __name__, url_prefix='/salespersons')
 

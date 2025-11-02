@@ -46,7 +46,7 @@ class VisitFilterRequest(BaseModel):
         }
     
     @validator('visit_date_to')
-    def validate_date_range(cls, v, values):
+    def validate_date_range(cls, v, values):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar que fecha_hasta >= fecha_desde"""
         if v and 'visit_date_from' in values and values['visit_date_from']:
             if v < values['visit_date_from']:
@@ -54,14 +54,14 @@ class VisitFilterRequest(BaseModel):
         return v
     
     @validator('sort_order')
-    def validate_sort_order(cls, v):
+    def validate_sort_order(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar orden de clasificación"""
         if v and v.lower() not in ['asc', 'desc']:
             raise ValueError('sort_order debe ser "asc" o "desc"')
         return v.lower() if v else 'desc'
     
     @validator('sort_by')
-    def validate_sort_by(cls, v):
+    def validate_sort_by(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar campo de ordenamiento"""
         valid_fields = [
             'visit_date', 'visit_time', 'created_at', 'updated_at',
@@ -122,7 +122,7 @@ class FileUploadRequest(BaseModel):
         }
     
     @validator('file_name')
-    def validate_file_name(cls, v):
+    def validate_file_name(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar nombre de archivo"""
         if not v or v.strip() == '':
             raise ValueError('file_name no puede estar vacío')
@@ -135,7 +135,7 @@ class FileUploadRequest(BaseModel):
         return v.strip()
     
     @validator('file_size')
-    def validate_file_size(cls, v):
+    def validate_file_size(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar tamaño de archivo (máximo 10MB)"""
         if v and v > 10 * 1024 * 1024:  # 10MB
             raise ValueError('El archivo no puede superar 10MB')
@@ -159,7 +159,7 @@ class BulkVisitUpdateRequest(BaseModel):
         }
     
     @validator('visit_ids')
-    def validate_visit_ids(cls, v):
+    def validate_visit_ids(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
         """Validar IDs únicos y válidos"""
         if len(v) != len(set(v)):
             raise ValueError('Los IDs de visitas deben ser únicos')
