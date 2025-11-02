@@ -21,6 +21,9 @@ class DeleteProduct:
     def execute(self):
         """Delete product (soft delete by default, or hard delete)"""
         try:
+            # Refresh product state to get current database values
+            db.session.refresh(self.product)
+            
             # Store product data for response
             product_data = self.product.to_dict()
             

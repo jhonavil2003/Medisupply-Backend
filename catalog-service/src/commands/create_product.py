@@ -15,7 +15,7 @@ class CreateProduct:
         required_fields = ['sku', 'name', 'category', 'unit_price', 'unit_of_measure', 'supplier_id']
         
         for field in required_fields:
-            if field not in self.data or not self.data[field]:
+            if field not in self.data or (self.data[field] is None or (isinstance(self.data[field], str) and not self.data[field].strip())):
                 raise ValidationError(f"Field '{field}' is required")
         
         # Validate SKU uniqueness
@@ -31,7 +31,9 @@ class CreateProduct:
         # Validate numeric fields
         try:
             if 'unit_price' in self.data:
-                float(self.data['unit_price'])
+                price = float(self.data['unit_price'])
+                if price <= 0:
+                    raise ValidationError("Unit price must be greater than zero")
             if 'weight_kg' in self.data and self.data['weight_kg'] is not None:
                 float(self.data['weight_kg'])
         except (ValueError, TypeError):

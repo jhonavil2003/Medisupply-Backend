@@ -120,10 +120,17 @@ def create_product():
     - 500: Server error
     """
     try:
-        data = request.get_json()
+        try:
+            data = request.get_json(force=True)
+        except Exception:
+            # If JSON parsing fails, treat as missing request body
+            data = None
         
-        if not data:
+        if data is None:
             raise ValidationError("Request body is required")
+        
+        if not isinstance(data, dict):
+            raise ValidationError("Request body must be a JSON object")
         
         command = CreateProduct(data)
         result = command.execute()
@@ -188,10 +195,17 @@ def update_product(product_id):
     - 500: Server error
     """
     try:
-        data = request.get_json()
+        try:
+            data = request.get_json(force=True)
+        except Exception:
+            # If JSON parsing fails, treat as missing request body
+            data = None
         
-        if not data:
+        if data is None:
             raise ValidationError("Request body is required")
+        
+        if not isinstance(data, dict):
+            raise ValidationError("Request body must be a JSON object")
         
         command = UpdateProduct(product_id, data)
         result = command.execute()

@@ -106,3 +106,11 @@ class TestProductModel:
         
         deleted_condition = RegulatoryCondition.query.get(condition_id)
         assert deleted_condition is None
+
+    def test_product_repr(self, db, sample_product):
+        """Test that Product __repr__ method works correctly"""
+        repr_str = repr(sample_product)
+        
+        assert 'Product TEST-001: Test Product' in repr_str
+        assert sample_product.sku in repr_str
+        assert sample_product.name in repr_str

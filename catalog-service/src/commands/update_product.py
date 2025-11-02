@@ -25,7 +25,7 @@ class UpdateProduct:
     def _validate_data(self):
         """Validate input data for product update"""
         # If SKU is being changed, validate uniqueness
-        if 'sku' in self.data and self.data['sku'] != self.sku:
+        if 'sku' in self.data and self.data['sku'] != self.product.sku:
             existing_product = Product.query.filter_by(sku=self.data['sku']).first()
             if existing_product:
                 raise ValidationError(f"Product with SKU '{self.data['sku']}' already exists")
@@ -43,16 +43,25 @@ class UpdateProduct:
         for field in numeric_fields:
             if field in self.data and self.data[field] is not None:
                 try:
-                    float(self.data[field])
+                    value = float(self.data[field])
+                    # Special validation for unit_price - must be positive
+                    if field == 'unit_price' and value <= 0:
+                        raise ValidationError("Unit price must be greater than zero")
                 except (ValueError, TypeError):
                     raise ValidationError(f"Invalid numeric value for field '{field}'")
     
     def execute(self):
         """Update product with provided data"""
         try:
-            # Update fields that are provided
+            # Update fields that are provided (except SKU which should not be changed)
             for field, value in self.data.items():
+                if field == 'sku':
+                    continue  # Skip SKU updates for security
                 if hasattr(self.product, field):
+                    # Trim string fields
+                    if isinstance(value, str):
+                        value = value.strip()
+                    
                     # Convert numeric fields to Decimal
                     if field in ['unit_price', 'weight_kg', 'length_cm', 'width_cm', 'height_cm',
                                'storage_temperature_min', 'storage_temperature_max', 'storage_humidity_max']:

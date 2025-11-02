@@ -3,7 +3,7 @@ from src.errors.errors import NotFoundError
 
 class GetProductById:    
     def __init__(self, product_id):
-        if not product_id:
+        if product_id is None:
             raise ValueError("Product ID is required")
         if not isinstance(product_id, int) or product_id <= 0:
             raise ValueError("Product ID must be a positive integer")
