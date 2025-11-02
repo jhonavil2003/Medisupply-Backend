@@ -16,8 +16,7 @@ Endpoints:
 """
 
 from flask import Blueprint, request, jsonify, make_response
-from datetime import datetime, date, time
-from decimal import Decimal
+from datetime import datetime, time
 import logging
 
 from src.commands.generate_routes import GenerateRoutes, CancelRoute, UpdateRouteStatus
@@ -122,14 +121,16 @@ def generate_routes():
                 try:
                     hour, minute = map(int, order['time_window_start'].split(':'))
                     order_copy['time_window_start'] = time(hour, minute)
-                except:
+                except (ValueError, TypeError, AttributeError):
+                    # Formato inválido, se ignora la ventana de tiempo
                     pass
             
             if order.get('time_window_end'):
                 try:
                     hour, minute = map(int, order['time_window_end'].split(':'))
                     order_copy['time_window_end'] = time(hour, minute)
-                except:
+                except (ValueError, TypeError, AttributeError):
+                    # Formato inválido, se ignora la ventana de tiempo
                     pass
             
             orders.append(order_copy)

@@ -2,9 +2,8 @@
 Comandos para gestión de vehículos de la flota.
 """
 
-from typing import List, Optional, Dict
+from typing import Optional, Dict
 from datetime import datetime, date
-from decimal import Decimal
 import logging
 
 from src.models.vehicle import Vehicle
@@ -161,7 +160,6 @@ class UpdateVehicleAvailability:
                     'message': f'Vehículo {self.vehicle_id} no encontrado'
                 }
             
-            old_status = vehicle.is_available
             vehicle.is_available = self.is_available
             vehicle.updated_at = datetime.now()
             

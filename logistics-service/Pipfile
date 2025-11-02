@@ -19,8 +19,8 @@ ortools = "*"
 reportlab = "*"
 
 [dev-packages]
-pytest = "*"
-pytest-cov = "*"
+pytest = "==8.4.2"
+pytest-cov = "==7.0.0"
 
 [requires]
 python_version = "3.12"

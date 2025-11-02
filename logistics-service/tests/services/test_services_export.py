@@ -6,12 +6,10 @@ Basado en la estructura de tests del proyecto.
 import pytest
 import io
 import csv
-from unittest.mock import Mock, patch, MagicMock
-from datetime import date, datetime
+from unittest.mock import patch
 from decimal import Decimal
 
 from src.services.export_service import ExportService
-from src.models.delivery_route import DeliveryRoute
 from src.models.route_stop import RouteStop
 
 

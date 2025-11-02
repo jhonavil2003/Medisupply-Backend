@@ -6,7 +6,7 @@ Implementa caché de direcciones para reducir llamadas a la API.
 import os
 import googlemaps
 import logging
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple
 from datetime import datetime
 from src.models.geocoded_address import GeocodedAddress
 from src.session import db

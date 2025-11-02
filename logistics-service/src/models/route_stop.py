@@ -1,6 +1,5 @@
 from src.session import db
-from datetime import datetime, time
-from decimal import Decimal
+from datetime import datetime
 
 
 class RouteStop(db.Model):

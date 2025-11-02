@@ -9,7 +9,7 @@ import os
 import time
 import logging
 from typing import List, Dict, Optional, Any
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from enum import Enum
 import requests
 from requests.adapters import HTTPAdapter

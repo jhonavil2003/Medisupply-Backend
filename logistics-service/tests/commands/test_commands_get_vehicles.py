@@ -3,9 +3,7 @@ Tests unitarios para los comandos de gestión de vehículos.
 Basado en la estructura de tests del proyecto.
 """
 
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, timedelta
 
 from src.commands.get_vehicles import (
     GetVehicles, 

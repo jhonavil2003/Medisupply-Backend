@@ -125,17 +125,6 @@ class TestGoogleMapsService:
         with pytest.raises(ValueError, match="No se pudo geocodificar"):
             service.geocode_address('Dirección Inexistente', 'Ciudad Falsa', use_cache=False)
     
-    @patch.object(GoogleMapsService, '__init__', lambda self: None)
-    def test_geocode_address_disabled(self):
-        """Test con geocoding deshabilitado."""
-        service = GoogleMapsService()
-        service.api_key = 'test_key'
-        service.geocoding_enabled = False
-        service.client = Mock()
-        
-        # Cuando está deshabilitado, debería retornar None o lanzar error
-        # según implementación
-        pass
     
     @patch.object(GoogleMapsService, '__init__', lambda self: None)
     def test_geocode_address_saves_to_cache(self, db):
@@ -156,7 +145,7 @@ class TestGoogleMapsService:
         service.geocoding_enabled = True
         service.client = mock_instance
         
-        result = service.geocode_address('Test Address', 'Bogotá', use_cache=True)
+        service.geocode_address('Test Address', 'Bogotá', use_cache=True)
         
         # Verificar que se guardó en caché
         cached = GeocodedAddress.query.filter_by(city='Bogotá').first()
@@ -239,27 +228,13 @@ class TestGoogleMapsService:
         origins = [(4.68, -74.05)]
         destinations = [(4.70, -74.06)]
         
-        result = service.get_distance_matrix(origins, destinations, mode='driving')
+        service.get_distance_matrix(origins, destinations, mode='driving')
         
         # Verificar que se llamó con el modo correcto
         mock_instance.distance_matrix.assert_called_once()
         call_args = mock_instance.distance_matrix.call_args
         assert call_args[1].get('mode') == 'driving'
     
-    @patch.object(GoogleMapsService, '__init__', lambda self: None)
-    def test_get_distance_matrix_disabled(self):
-        """Test con Distance Matrix API deshabilitado."""
-        service = GoogleMapsService()
-        service.api_key = 'test_key'
-        service.distance_matrix_enabled = False
-        service.client = Mock()
-        
-        # Test eliminado - validación de configuración requiere lógica compleja
-        # que puede variar según el entorno y la implementación
-        pass
-    
-    # Test de ZERO_RESULTS eliminado - el comportamiento puede variar
-    # según la implementación (retornar valores por defecto vs lanzar excepción)
     
     @patch.object(GoogleMapsService, '__init__', lambda self: None)
     def test_confidence_level_determination(self, db):

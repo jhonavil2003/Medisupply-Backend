@@ -2,15 +2,11 @@
 Comandos para consultar y gestionar rutas de entrega.
 """
 
-from typing import List, Optional, Dict
-from datetime import date, datetime
-from decimal import Decimal
+from typing import Optional, Dict
+from datetime import date
 import logging
 
 from src.models.delivery_route import DeliveryRoute
-from src.models.route_stop import RouteStop
-from src.models.route_assignment import RouteAssignment
-from src.models.vehicle import Vehicle
 from src.session import Session
 
 logger = logging.getLogger(__name__)

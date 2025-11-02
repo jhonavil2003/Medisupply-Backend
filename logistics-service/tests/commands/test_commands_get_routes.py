@@ -3,14 +3,11 @@ Tests unitarios para los comandos de consulta de rutas.
 Basado en la estructura de tests del proyecto.
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 from src.commands.get_routes import GetRoutes, GetRouteById, GetRoutesByDate
 from src.models.delivery_route import DeliveryRoute
-from src.models.route_stop import RouteStop
-from src.models.route_assignment import RouteAssignment
 from src.models.vehicle import Vehicle
 
 

@@ -97,7 +97,7 @@ class RouteOptimizerService:
         
         try:
             # 1. Validar y obtener centro de distribución
-            distribution_center = Session.query(DistributionCenter).get(distribution_center_id)
+            distribution_center = Session.get(DistributionCenter, distribution_center_id)
             if not distribution_center:
                 raise ValueError(f"Centro de distribución {distribution_center_id} no encontrado")
             
@@ -311,7 +311,7 @@ class RouteOptimizerService:
                 order['longitude'] = result['lng']
                 order['formatted_address'] = result.get('formatted_address', order['delivery_address'])
                 geocoded_orders.append(order)
-                logger.info(f"✅ Geocodificado: {order['order_number']} -> ({result['lat']}, {result['lng']})")
+                logger.info(f"[OK] Geocodificado: {order['order_number']} -> ({result['lat']}, {result['lng']})")
             
             except Exception as e:
                 error_msg = f"Error geocodificando pedido {order['order_number']}: {e}"

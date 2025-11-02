@@ -1,6 +1,5 @@
 from src.session import db
 from datetime import datetime
-from decimal import Decimal
 
 
 class DeliveryRoute(db.Model):

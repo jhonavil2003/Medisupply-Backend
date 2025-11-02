@@ -9,8 +9,8 @@ Este módulo resuelve el problema de ruteo de vehículos con las siguientes rest
 - Máximo de paradas por ruta
 """
 
-from typing import List, Dict, Tuple, Optional
-from datetime import datetime, time, timedelta
+from typing import List, Dict
+from datetime import datetime, time
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 import logging

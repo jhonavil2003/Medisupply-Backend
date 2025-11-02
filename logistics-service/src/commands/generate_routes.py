@@ -5,7 +5,7 @@ Este comando orquesta la generación de rutas desde pedidos confirmados,
 integrándose con sales-service y utilizando el RouteOptimizerService.
 """
 
-from typing import List, Optional, Dict
+from typing import List, Dict
 from datetime import datetime, date, time
 import logging
 
