@@ -3,6 +3,7 @@ from src.models.supplier import Supplier
 from src.session import db
 from src.errors.errors import ValidationError, ApiError
 from decimal import Decimal
+from sqlalchemy.exc import IntegrityError
 
 
 class UpdateProduct:
@@ -74,6 +75,22 @@ class UpdateProduct:
             
             return self.product.to_dict()
             
+        except (ValidationError, ApiError):
+            db.session.rollback()
+            raise
+        except IntegrityError as e:
+            db.session.rollback()
+            # Handle database constraint violations (should return 400, not 500)
+            error_message = str(e.orig) if hasattr(e, 'orig') else str(e)
+            if 'UNIQUE constraint failed' in error_message or 'duplicate key' in error_message.lower():
+                if 'sku' in error_message.lower():
+                    raise ValidationError(f"Another product with SKU '{self.data.get('sku')}' already exists")
+                else:
+                    raise ValidationError("A product with this information already exists")
+            elif 'FOREIGN KEY constraint failed' in error_message or 'foreign key' in error_message.lower():
+                raise ValidationError("Invalid supplier ID provided")
+            else:
+                raise ValidationError(f"Database constraint violation: {error_message}")
         except Exception as e:
             db.session.rollback()
             raise ApiError(f"Error updating product: {str(e)}", status_code=500)

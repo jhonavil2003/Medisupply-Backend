@@ -176,6 +176,9 @@ class TestDeleteProduct:
             command = DeleteProduct(product_id=sample_product.id)
             result = command.execute_hard_delete()
             
+            # Verify the result message
+            assert 'permanently deleted' in result['message']
+            
             # Verify product is completely gone
             product = Product.query.filter_by(id=product_id).first()
             assert product is None
@@ -191,6 +194,9 @@ class TestDeleteProduct:
             
             command = DeleteProduct(product_id=sample_product.id)
             result = command.execute()
+            
+            # Verify the result message
+            assert 'deactivated successfully' in result['message']
             
             # Verify timestamp was updated
             product = Product.query.filter_by(id=sample_product.id).first()
@@ -222,6 +228,9 @@ class TestDeleteProduct:
             command = DeleteProduct(product_id=sample_product_with_relationships.id)
             result = command.execute()
             
+            # Verify the result message
+            assert 'deactivated successfully' in result['message']
+            
             # Product should still exist with relationships intact
             product = Product.query.filter_by(id=sample_product_with_relationships.id).first()
             assert product is not None
@@ -238,6 +247,9 @@ class TestDeleteProduct:
             
             command = DeleteProduct(product_id=sample_product_with_relationships.id)
             result = command.execute_hard_delete()
+            
+            # Verify the result message
+            assert 'permanently deleted' in result['message']
             
             # Product should be completely gone
             product = Product.query.filter_by(id=product_id).first()

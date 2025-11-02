@@ -1,6 +1,7 @@
 from src.models.product import Product
 from src.session import db
 from src.errors.errors import ApiError, ValidationError
+from sqlalchemy.exc import IntegrityError
 
 
 class DeleteProduct:
@@ -39,6 +40,14 @@ class DeleteProduct:
                 'deleted_product': product_data
             }
             
+        except (ValidationError, ApiError):
+            db.session.rollback()
+            raise
+        except IntegrityError as e:
+            db.session.rollback()
+            # Handle database constraint violations during soft delete
+            error_message = str(e.orig) if hasattr(e, 'orig') else str(e)
+            raise ValidationError(f"Cannot deactivate product due to database constraints: {error_message}")
         except Exception as e:
             db.session.rollback()
             raise ApiError(f"Error deleting product: {str(e)}", status_code=500)
@@ -58,6 +67,17 @@ class DeleteProduct:
                 'deleted_product': product_data
             }
             
+        except (ValidationError, ApiError):
+            db.session.rollback()
+            raise
+        except IntegrityError as e:
+            db.session.rollback()
+            # Handle database constraint violations during hard delete
+            error_message = str(e.orig) if hasattr(e, 'orig') else str(e)
+            if 'FOREIGN KEY constraint failed' in error_message or 'foreign key' in error_message.lower():
+                raise ValidationError(f"Cannot delete product '{self.product.sku}' because it is referenced by other records. Consider soft delete instead.")
+            else:
+                raise ValidationError(f"Cannot delete product due to database constraints: {error_message}")
         except Exception as e:
             db.session.rollback()
             raise ApiError(f"Error permanently deleting product: {str(e)}", status_code=500)

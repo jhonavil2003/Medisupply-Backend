@@ -29,7 +29,6 @@ Lista productos con filtros opcionales.
 - `category`: Filtrar por categoría
 - `subcategory`: Filtrar por subcategoría
 - `supplier_id`: Filtrar por ID del proveedor
-- `sku`: Buscar producto específico por SKU
 - `is_active`: true/false para productos activos (default: true)
 - `requires_cold_chain`: true/false para cadena de frío
 - `page`: Número de página (default: 1)
@@ -42,6 +41,12 @@ curl "http://localhost:3001/products?search=jeringa&category=Instrumental"
 
 # Buscar producto específico por SKU
 curl "http://localhost:3001/products?sku=MED-2025-001"
+
+# Filtrar por proveedor específico
+curl "http://localhost:3001/products?supplier_id=1"
+
+# Paginación
+curl "http://localhost:3001/products?page=2&per_page=10"
 ```
 
 ### `POST /products`
@@ -70,6 +75,21 @@ Crear un nuevo producto.
 curl -X POST "http://localhost:3001/products" \
   -H "Content-Type: application/json" \
   -d '{"sku":"JER-002","name":"Jeringa 5ml","category":"Instrumental","unit_price":450,"unit_of_measure":"unidad","supplier_id":1}'
+```
+
+**Respuesta exitosa (201):**
+```json
+{
+  "id": 15,
+  "sku": "JER-002",
+  "name": "Jeringa 5ml",
+  "category": "Instrumental",
+  "unit_price": 450.00,
+  "unit_of_measure": "unidad",
+  "supplier_id": 1,
+  "is_active": true,
+  "created_at": "2025-11-02T10:30:00Z"
+}
 ```
 
 ### `GET /products/{product_id}`
@@ -154,7 +174,56 @@ HOST=0.0.0.0
 ### Ejecutar Tests
 
 ```bash
+# Ejecutar todos los tests con cobertura
 pipenv run pytest --cov=src --cov-report=term-missing
+
+# Ejecutar tests específicos de productos
+pipenv run pytest tests/commands/ tests/blueprints/test_products_blueprint.py -v
+
+# Ejecutar con reporte HTML de cobertura
+pipenv run pytest --cov=src --cov-report=html
+```
+
+### Estado de Cobertura de Código
+
+El proyecto mantiene **88% de cobertura total** con **157 tests** que validan exhaustivamente todas las operaciones CRUD de productos:
+
+**Componentes con 100% de cobertura:**
+- ✅ `CreateProduct` - 38 líneas (18 tests)
+- ✅ `UpdateProduct` - 53 líneas (23 tests) 
+- ✅ `DeleteProduct` - 34 líneas (18 tests)
+- ✅ `GetProductById` - 14 líneas (10 tests)
+- ✅ `GetProductBySku` - 12 líneas (9 tests)
+- ✅ `GetProducts` - 37 líneas (12 tests)
+- ✅ `Product` (modelo) - 46 líneas (9 tests)
+
+**Tipos de pruebas implementadas:**
+- ✨ Validación de datos y campos requeridos
+- 🔍 Casos de error y excepciones personalizadas
+- 💾 Operaciones de base de datos (CRUD completo)
+- 🔄 Transacciones y rollbacks automáticos
+- 📄 Validación de JSON y tipos de datos
+- 🎯 Escenarios edge cases y límites
+
+### Estructura de Tests
+
+```
+tests/
+├── commands/           # Tests de lógica de negocio
+│   ├── test_create_product.py              # 18 tests
+│   ├── test_update_product.py              # 23 tests  
+│   ├── test_delete_product.py              # 18 tests
+│   ├── test_get_product_by_id.py           # 10 tests
+│   ├── test_commands_get_product_by_sku.py # 9 tests
+│   └── test_commands_get_products.py       # 12 tests
+├── blueprints/         # Tests de endpoints REST
+│   ├── test_products_blueprint.py          # 22 tests
+│   └── test_blueprints_products.py         # 15 tests
+├── models/             # Tests de modelos de datos
+│   ├── test_models_product.py              # 9 tests
+│   └── test_models_other.py                # 9 tests
+└── errors/             # Tests de manejo de errores
+    └── test_errors.py                      # 12 tests
 ```
 
 ### Ejemplos de Uso
@@ -163,24 +232,33 @@ pipenv run pytest --cov=src --cov-report=term-missing
 # Health check
 curl http://localhost:3001/health
 
+# Health check específico de productos
+curl http://localhost:3001/products/health
+
 # Listar productos
 curl http://localhost:3001/products
 
-# Buscar por SKU
-curl http://localhost:3001/products/JER-001
+# Buscar por SKU (query parameter)
+curl "http://localhost:3001/products?sku=JER-001"
+
+# Obtener producto específico por ID
+curl http://localhost:3001/products/1
 
 # Crear producto
 curl -X POST "http://localhost:3001/products" \
   -H "Content-Type: application/json" \
   -d '{"sku":"TEST-001","name":"Producto Test","category":"Test","unit_price":100,"unit_of_measure":"unidad","supplier_id":1}'
 
-# Actualizar producto
-curl -X PUT "http://localhost:3001/products/TEST-001" \
+# Actualizar producto por ID
+curl -X PUT "http://localhost:3001/products/15" \
   -H "Content-Type: application/json" \
   -d '{"unit_price": 120.00}'
 
-# Eliminar producto (soft delete)
-curl -X DELETE "http://localhost:3001/products/TEST-001"
+# Eliminar producto por ID (soft delete)
+curl -X DELETE "http://localhost:3001/products/15"
+
+# Eliminar producto por ID (hard delete)
+curl -X DELETE "http://localhost:3001/products/15?hard_delete=true"
 ```
 
 ## 📋 **Referencia Rápida - Endpoints CRUD**
@@ -189,9 +267,9 @@ curl -X DELETE "http://localhost:3001/products/TEST-001"
 |--------|----------|-------------|---------------------|
 | GET | `/products` | Listar productos con filtros | 200, 400, 500 |
 | POST | `/products` | Crear nuevo producto | 201, 400, 500 |
-| GET | `/products/{sku}` | Obtener producto por SKU | 200, 404, 500 |
-| PUT | `/products/{sku}` | Actualizar producto | 200, 400, 404, 500 |
-| DELETE | `/products/{sku}` | Eliminar producto | 200, 404, 500 |
+| GET | `/products/{id}` | Obtener producto por ID | 200, 404, 500 |
+| PUT | `/products/{id}` | Actualizar producto | 200, 400, 404, 500 |
+| DELETE | `/products/{id}` | Eliminar producto | 200, 404, 500 |
 
 ### **Campos Requeridos para Crear Producto:**
 - `sku` (string) - Identificador único

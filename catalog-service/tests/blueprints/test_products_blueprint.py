@@ -1,8 +1,4 @@
 import json
-import pytest
-from decimal import Decimal
-from src.models.product import Product
-from src.models.supplier import Supplier
 
 
 class TestProductsBlueprint:

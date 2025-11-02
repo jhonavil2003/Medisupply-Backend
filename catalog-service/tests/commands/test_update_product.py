@@ -11,7 +11,6 @@ class TestUpdateProduct:
     def test_update_product_success_single_field(self, app, sample_product):
         """Test successful update of a single field"""
         with app.app_context():
-            original_name = sample_product.name
             data = {'name': 'Updated Product Name'}
             
             command = UpdateProduct(product_id=sample_product.id, data=data)
@@ -284,7 +283,6 @@ class TestUpdateProduct:
         """Test validation error when trying to change SKU to existing one"""
         with app.app_context():
             # Create another product with a different SKU
-            from src.models.product import Product
             other_product = Product(
                 sku='OTHER-SKU',
                 name='Other Product',

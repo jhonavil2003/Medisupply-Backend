@@ -1,8 +1,6 @@
 import pytest
-from decimal import Decimal
 from src.commands.create_product import CreateProduct
 from src.models.product import Product
-from src.models.supplier import Supplier
 from src.errors.errors import ValidationError, ApiError
 from src.session import db
 

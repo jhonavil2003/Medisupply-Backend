@@ -212,9 +212,9 @@ def update_product(product_id):
         
         return jsonify(result), 200
         
-    except ApiError as e:
-        raise e
     except ValidationError as e:
+        raise e
+    except ApiError as e:
         raise e
     except Exception as e:
         raise ApiError(f"Error updating product: {str(e)}", status_code=500)
