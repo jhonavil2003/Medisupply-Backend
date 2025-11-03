@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from src.commands.get_products import GetProducts
 from src.commands.get_product_by_id import GetProductById
+from src.commands.get_product_by_sku import GetProductBySKU
 from src.commands.create_product import CreateProduct
 from src.commands.update_product import UpdateProduct
 from src.commands.delete_product import DeleteProduct
@@ -256,6 +257,31 @@ def delete_product(product_id):
         raise e
     except Exception as e:
         raise ApiError(f"Error deleting product: {str(e)}", status_code=500)
+
+
+@products_bp.route('/<string:sku>', methods=['GET'])
+def get_product_by_sku(sku):
+    """
+    GET /products/<sku>
+    
+    Get a product by SKU
+    
+    Args:
+    - sku: Product SKU
+    
+    Returns:
+    - 200: Product details
+    - 404: Product not found
+    - 500: Server error
+    """
+    try:
+        command = GetProductBySKU(sku)
+        result = command.execute()
+        return jsonify(result), 200
+    except ApiError as e:
+        raise e
+    except Exception as e:
+        raise ApiError(f"Error retrieving product: {str(e)}", status_code=500)
 
 
 # Health check endpoint
