@@ -27,12 +27,18 @@ def create_order():
             - tax_percentage (float, opcional): Porcentaje de impuestos (default: 19.0)
         payment_terms (str, opcional): Términos de pago (default: 'contado')
         payment_method (str, opcional): Método de pago
-        delivery_address (str, opcional): Dirección de entrega
-        delivery_city (str, opcional): Ciudad de entrega
-        delivery_department (str, opcional): Departamento de entrega
+        delivery_address (str, opcional): Dirección de entrega (default: customer.address)
+        delivery_neighborhood (str, opcional): Barrio de entrega (default: customer.neighborhood)
+        delivery_city (str, opcional): Ciudad de entrega (default: customer.city)
+        delivery_department (str, opcional): Departamento de entrega (default: customer.department)
+        delivery_latitude (float, opcional): Latitud GPS de entrega (default: customer.latitude)
+        delivery_longitude (float, opcional): Longitud GPS de entrega (default: customer.longitude)
         delivery_date (str, opcional): Fecha estimada de entrega (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
         preferred_distribution_center (str, opcional): Código del centro de distribución preferido
         notes (str, opcional): Notas de la orden
+    
+    Nota: Los datos del cliente (razón social, documento, teléfono, email) se guardan automáticamente
+          como snapshot al momento de crear la orden.
     
     Retorna:
         201: Orden creada exitosamente
