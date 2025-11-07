@@ -21,7 +21,7 @@ services:
     volumes:
       - catalog_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cataloguser"]
+      test: ["CMD-SHELL", "pg_isready -U cataloguser -d catalog_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +65,7 @@ services:
     volumes:
       - logistics_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logisticsuser"]
+      test: ["CMD-SHELL", "pg_isready -U logisticsuser -d logistics_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -85,6 +85,14 @@ services:
       HOST: 0.0.0.0
       PORT: 3002
       PYTHONPATH: /app
+      # HU-077 - Route Optimization
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      GOOGLE_MAPS_GEOCODING_ENABLED: "true"
+      GOOGLE_MAPS_DISTANCE_MATRIX_ENABLED: "true"
+      SALES_SERVICE_URL: http://sales-service:3003
+      VRP_MAX_EXECUTION_TIME_SECONDS: 30
+      VRP_OPTIMIZATION_STRATEGY: balanced
+      ENABLE_ROUTE_CACHING: "true"
     depends_on:
       logistics-db:
         condition: service_healthy
@@ -109,7 +117,7 @@ services:
     volumes:
       - sales_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U salesuser"]
+      test: ["CMD-SHELL", "pg_isready -U salesuser -d sales_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -130,19 +138,20 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:3001
       LOGISTICS_SERVICE_URL: http://logistics-service:3002
       EXTERNAL_SERVICE_TIMEOUT: 3
+      UPLOAD_FOLDER: uploads
       PYTHONPATH: /app
     depends_on:
       sales-db:
         condition: service_healthy
       catalog-service:
         condition: service_started
-      logistics-service:
-        condition: service_started
     volumes:
       - ./sales-service/src:/app/src
     networks:
       - medisupply-network
     command: python -m src.main
+
+
 
 volumes:
   catalog_data:

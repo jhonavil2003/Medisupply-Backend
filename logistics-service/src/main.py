@@ -3,6 +3,9 @@ from flask import Flask
 from flask_cors import CORS
 from src.session import db, init_db
 from src.blueprints.inventory import inventory_bp
+from src.blueprints.websocket import websocket_bp
+from src.blueprints.routes import routes_bp, vehicles_bp
+from src.websockets.websocket_manager import init_socketio
 from src.errors.errors import register_error_handlers
 
 def create_app(config=None):
@@ -24,20 +27,28 @@ def create_app(config=None):
     CORS(app)
     init_db(app)
     
+    # Registrar blueprints
     app.register_blueprint(inventory_bp)
+    app.register_blueprint(websocket_bp)
+    app.register_blueprint(routes_bp)
+    app.register_blueprint(vehicles_bp)
+    
+    # Inicializar WebSocket
+    socketio = init_socketio(app)
     
     register_error_handlers(app)
     
     @app.route('/health', methods=['GET'])
     def health():
-        return {'status': 'healthy', 'service': 'logistics-service'}, 200
+        return {'status': 'healthy', 'service': 'logistics-service', 'websocket': 'enabled'}, 200
     
-    return app
+    return app, socketio
 
 if __name__ == '__main__':
-    app = create_app()
+    app, socketio = create_app()
     
     port = int(os.getenv('PORT', 3002))
     host = os.getenv('HOST', '0.0.0.0')
     
-    app.run(host=host, port=port, debug=True)
+    # Usar socketio.run en lugar de app.run para soportar WebSockets
+    socketio.run(app, host=host, port=port, debug=True, allow_unsafe_werkzeug=True)

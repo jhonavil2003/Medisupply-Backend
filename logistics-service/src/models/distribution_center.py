@@ -22,6 +22,10 @@ class DistributionCenter(db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)
     supports_cold_chain = db.Column(db.Boolean, default=False)
     
+    # Coordenadas geográficas para el optimizador de rutas
+    latitude = db.Column(db.Numeric(10, 7))
+    longitude = db.Column(db.Numeric(10, 7))
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -43,6 +47,8 @@ class DistributionCenter(db.Model):
             'capacity_m3': float(self.capacity_m3) if self.capacity_m3 else None,
             'is_active': self.is_active,
             'supports_cold_chain': self.supports_cold_chain,
+            'latitude': float(self.latitude) if self.latitude else None,
+            'longitude': float(self.longitude) if self.longitude else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -1,4 +1,3 @@
-import pytest
 import json
 
 
@@ -98,15 +97,17 @@ class TestProductsListEndpoint:
 
 class TestProductDetailEndpoint:
     
-    def test_get_product_by_sku_success(self, client, sample_product):
-        response = client.get('/products/TEST-001')
+    def test_get_product_by_id_success(self, client, sample_product):
+        # sample_product debe tener un ID, usualmente 1 en las pruebas
+        response = client.get(f'/products/{sample_product.id}')
         
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['sku'] == 'TEST-001'
+        assert data['id'] == sample_product.id
+        assert data['sku'] == sample_product.sku
     
-    def test_get_product_by_sku_not_found(self, client):
-        response = client.get('/products/NONEXISTENT')
+    def test_get_product_by_id_not_found(self, client):
+        response = client.get('/products/99999')  # ID que no existe
         
         assert response.status_code == 404
         data = json.loads(response.data)

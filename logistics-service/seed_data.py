@@ -11,10 +11,11 @@ from src.models.distribution_center import DistributionCenter
 from src.models.inventory import Inventory
 from src.models.warehouse_location import WarehouseLocation
 from src.models.product_batch import ProductBatch
+from src.models.vehicle import Vehicle
 
 
 def seed_data():
-    app = create_app()
+    app, socketio = create_app()
     
     with app.app_context():
         print("🌱 Iniciando seed de datos...")
@@ -37,7 +38,9 @@ def seed_data():
             manager_name='Carlos Rodríguez',
             capacity_m3=Decimal('5000.00'),
             is_active=True,
-            supports_cold_chain=True
+            supports_cold_chain=True,
+            latitude=Decimal('4.60971'),
+            longitude=Decimal('-74.08175')
         )
         
         dc_medellin = DistributionCenter(
@@ -53,7 +56,9 @@ def seed_data():
             manager_name='Ana María López',
             capacity_m3=Decimal('3000.00'),
             is_active=True,
-            supports_cold_chain=True
+            supports_cold_chain=True,
+            latitude=Decimal('6.25184'),
+            longitude=Decimal('-75.56359')
         )
         
         dc_cali = DistributionCenter(
@@ -69,7 +74,9 @@ def seed_data():
             manager_name='Jorge Martínez',
             capacity_m3=Decimal('2500.00'),
             is_active=True,
-            supports_cold_chain=False
+            supports_cold_chain=False,
+            latitude=Decimal('3.43722'),
+            longitude=Decimal('-76.5225')
         )
         
         db.session.add_all([dc_bogota, dc_medellin, dc_cali])
@@ -406,6 +413,242 @@ def seed_data():
             for batch in near_expiry_batches:
                 days_left = (batch.expiry_date - datetime.now().date()).days
                 print(f"  - {batch.product_sku} | Lote: {batch.batch_number} | Vence en {days_left} días | Cantidad: {batch.quantity}")
+        
+        # ============================================================================
+        # VEHÍCULOS (HU-077 - Route Optimization)
+        # ============================================================================
+        print("\n🚚 Creando vehículos para la flota...")
+        
+        vehicles = [
+            # Vehículos con refrigeración - Bogotá
+            Vehicle(
+                plate='ABC-123',
+                vehicle_type='refrigerated_truck',
+                brand='Chevrolet',
+                model='NPR',
+                year=2022,
+                capacity_kg=Decimal('3000.00'),
+                capacity_m3=Decimal('18.00'),
+                has_refrigeration=True,
+                temperature_min=Decimal('-20.00'),
+                temperature_max=Decimal('8.00'),
+                max_stops_per_route=12,
+                avg_speed_kmh=Decimal('35.00'),
+                cost_per_km=Decimal('3.50'),
+                home_distribution_center_id=dc_bogota.id,
+                driver_name='Juan Carlos Méndez',
+                driver_phone='+57 300 123 4567',
+                driver_license='C1234567',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('4.60971'),
+                current_location_lng=Decimal('-74.08175'),
+                notes='Vehículo equipado con sistema de refrigeración -20°C a 8°C. Ideal para vacunas e insulina.'
+            ),
+            Vehicle(
+                plate='DEF-456',
+                vehicle_type='refrigerated_truck',
+                brand='Hino',
+                model='Serie 300',
+                year=2023,
+                capacity_kg=Decimal('2500.00'),
+                capacity_m3=Decimal('15.00'),
+                has_refrigeration=True,
+                temperature_min=Decimal('2.00'),
+                temperature_max=Decimal('8.00'),
+                max_stops_per_route=10,
+                avg_speed_kmh=Decimal('38.00'),
+                cost_per_km=Decimal('3.20'),
+                home_distribution_center_id=dc_bogota.id,
+                driver_name='María Fernanda López',
+                driver_phone='+57 301 234 5678',
+                driver_license='C2345678',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('4.60971'),
+                current_location_lng=Decimal('-74.08175'),
+                notes='Refrigeración 2-8°C. Perfecto para medicamentos biológicos.'
+            ),
+            
+            # Vehículos estándar - Bogotá
+            Vehicle(
+                plate='GHI-789',
+                vehicle_type='van',
+                brand='Ford',
+                model='Transit',
+                year=2021,
+                capacity_kg=Decimal('1500.00'),
+                capacity_m3=Decimal('10.00'),
+                has_refrigeration=False,
+                max_stops_per_route=15,
+                avg_speed_kmh=Decimal('42.00'),
+                cost_per_km=Decimal('2.50'),
+                home_distribution_center_id=dc_bogota.id,
+                driver_name='Pedro Sánchez',
+                driver_phone='+57 302 345 6789',
+                driver_license='C3456789',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('4.60971'),
+                current_location_lng=Decimal('-74.08175'),
+                notes='Van estándar para productos que no requieren cadena de frío.'
+            ),
+            Vehicle(
+                plate='JKL-012',
+                vehicle_type='truck',
+                brand='Chevrolet',
+                model='NKR',
+                year=2020,
+                capacity_kg=Decimal('2000.00'),
+                capacity_m3=Decimal('14.00'),
+                has_refrigeration=False,
+                max_stops_per_route=12,
+                avg_speed_kmh=Decimal('40.00'),
+                cost_per_km=Decimal('2.80'),
+                home_distribution_center_id=dc_bogota.id,
+                driver_name='Luis Alberto Ramírez',
+                driver_phone='+57 303 456 7890',
+                driver_license='C4567890',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('4.60971'),
+                current_location_lng=Decimal('-74.08175'),
+                notes='Camión para cargas voluminosas sin refrigeración.'
+            ),
+            
+            # Vehículos - Medellín
+            Vehicle(
+                plate='MNO-345',
+                vehicle_type='refrigerated_truck',
+                brand='Isuzu',
+                model='NLR',
+                year=2022,
+                capacity_kg=Decimal('2800.00'),
+                capacity_m3=Decimal('16.00'),
+                has_refrigeration=True,
+                temperature_min=Decimal('-20.00'),
+                temperature_max=Decimal('8.00'),
+                max_stops_per_route=10,
+                avg_speed_kmh=Decimal('36.00'),
+                cost_per_km=Decimal('3.30'),
+                home_distribution_center_id=dc_medellin.id,
+                driver_name='Carlos Andrés Gómez',
+                driver_phone='+57 304 567 8901',
+                driver_license='C5678901',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('6.25184'),
+                current_location_lng=Decimal('-75.56359'),
+                notes='Refrigerado para Medellín y área metropolitana.'
+            ),
+            Vehicle(
+                plate='PQR-678',
+                vehicle_type='van',
+                brand='Renault',
+                model='Master',
+                year=2023,
+                capacity_kg=Decimal('1400.00'),
+                capacity_m3=Decimal('9.00'),
+                has_refrigeration=False,
+                max_stops_per_route=14,
+                avg_speed_kmh=Decimal('43.00'),
+                cost_per_km=Decimal('2.40'),
+                home_distribution_center_id=dc_medellin.id,
+                driver_name='Ana María Pérez',
+                driver_phone='+57 305 678 9012',
+                driver_license='C6789012',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('6.25184'),
+                current_location_lng=Decimal('-75.56359'),
+                notes='Van ágil para entregas urbanas en Medellín.'
+            ),
+            
+            # Vehículos - Cali
+            Vehicle(
+                plate='STU-901',
+                vehicle_type='van',
+                brand='Mercedes-Benz',
+                model='Sprinter',
+                year=2022,
+                capacity_kg=Decimal('1600.00'),
+                capacity_m3=Decimal('11.00'),
+                has_refrigeration=False,
+                max_stops_per_route=13,
+                avg_speed_kmh=Decimal('41.00'),
+                cost_per_km=Decimal('2.60'),
+                home_distribution_center_id=dc_cali.id,
+                driver_name='Roberto Castro',
+                driver_phone='+57 306 789 0123',
+                driver_license='C7890123',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('3.43722'),
+                current_location_lng=Decimal('-76.5225'),
+                notes='Sprinter para Cali, sin refrigeración.'
+            ),
+            Vehicle(
+                plate='VWX-234',
+                vehicle_type='truck',
+                brand='Hino',
+                model='Serie 500',
+                year=2021,
+                capacity_kg=Decimal('3500.00'),
+                capacity_m3=Decimal('20.00'),
+                has_refrigeration=False,
+                max_stops_per_route=10,
+                avg_speed_kmh=Decimal('38.00'),
+                cost_per_km=Decimal('3.00'),
+                home_distribution_center_id=dc_cali.id,
+                driver_name='Sandra Milena Torres',
+                driver_phone='+57 307 890 1234',
+                driver_license='C8901234',
+                is_available=True,
+                is_active=True,
+                current_location_lat=Decimal('3.43722'),
+                current_location_lng=Decimal('-76.5225'),
+                notes='Camión grande para Cali, capacidad extendida.'
+            ),
+            
+            # Vehículo en mantenimiento (no disponible)
+            Vehicle(
+                plate='YZA-567',
+                vehicle_type='refrigerated_truck',
+                brand='Chevrolet',
+                model='NPR',
+                year=2019,
+                capacity_kg=Decimal('2700.00'),
+                capacity_m3=Decimal('16.00'),
+                has_refrigeration=True,
+                temperature_min=Decimal('-15.00'),
+                temperature_max=Decimal('8.00'),
+                max_stops_per_route=11,
+                avg_speed_kmh=Decimal('35.00'),
+                cost_per_km=Decimal('3.40'),
+                home_distribution_center_id=dc_bogota.id,
+                driver_name='Miguel Ángel Vargas',
+                driver_phone='+57 308 901 2345',
+                driver_license='C9012345',
+                is_available=False,  # En mantenimiento
+                is_active=True,
+                current_location_lat=Decimal('4.60971'),
+                current_location_lng=Decimal('-74.08175'),
+                last_maintenance_date=datetime.now().date() - timedelta(days=5),
+                next_maintenance_date=datetime.now().date() + timedelta(days=85),
+                notes='En mantenimiento preventivo. Refrigerado. Estará disponible próximamente.'
+            ),
+        ]
+        
+        db.session.add_all(vehicles)
+        db.session.commit()
+        print(f"✅ Creados {Vehicle.query.count()} vehículos")
+        
+        # Resumen de vehículos por tipo
+        refrigerated_count = Vehicle.query.filter_by(has_refrigeration=True).count()
+        available_count = Vehicle.query.filter_by(is_available=True).count()
+        print(f"   - Vehículos refrigerados: {refrigerated_count}")
+        print(f"   - Vehículos disponibles: {available_count}")
+        print(f"   - Vehículos en mantenimiento: {Vehicle.query.filter_by(is_available=False).count()}")
         
         print("\n✅ Seed completado exitosamente!")
 
