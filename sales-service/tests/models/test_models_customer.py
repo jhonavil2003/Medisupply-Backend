@@ -81,3 +81,62 @@ class TestCustomerModel:
         
         with pytest.raises(Exception):
             db.session.commit()
+    
+    def test_customer_with_coordinates(self, db):
+        """Test customer with GPS coordinates."""
+        customer = Customer(
+            document_type='NIT',
+            document_number='123-GPS',
+            business_name='Hospital with GPS',
+            customer_type='hospital',
+            city='Bogotá',
+            neighborhood='Chapinero',
+            latitude=Decimal('4.60971'),
+            longitude=Decimal('-74.08175')
+        )
+        db.session.add(customer)
+        db.session.commit()
+        
+        assert customer.latitude == Decimal('4.60971')
+        assert customer.longitude == Decimal('-74.08175')
+        assert customer.neighborhood == 'Chapinero'
+    
+    def test_customer_to_dict_with_coordinates(self, db):
+        """Test customer to_dict includes coordinates."""
+        customer = Customer(
+            document_type='NIT',
+            document_number='456-GPS',
+            business_name='Clinica Test',
+            customer_type='clinica',
+            city='Medellín',
+            neighborhood='El Poblado',
+            latitude=Decimal('6.24479'),
+            longitude=Decimal('-75.57566')
+        )
+        db.session.add(customer)
+        db.session.commit()
+        
+        result = customer.to_dict()
+        
+        assert result['neighborhood'] == 'El Poblado'
+        assert result['latitude'] == 6.24479
+        assert result['longitude'] == -75.57566
+    
+    def test_customer_without_coordinates(self, db):
+        """Test customer without GPS coordinates returns None."""
+        customer = Customer(
+            document_type='NIT',
+            document_number='789-NO-GPS',
+            business_name='Hospital No GPS',
+            customer_type='hospital',
+            city='Cali'
+        )
+        db.session.add(customer)
+        db.session.commit()
+        
+        result = customer.to_dict()
+        
+        assert result['latitude'] is None
+        assert result['longitude'] is None
+        assert result['neighborhood'] is None
+

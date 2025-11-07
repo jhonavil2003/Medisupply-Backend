@@ -22,9 +22,12 @@ def create_customer():
         contact_email (str, opcional): Email del contacto
         contact_phone (str, opcional): Teléfono del contacto
         address (str, opcional): Dirección
+        neighborhood (str, opcional): Barrio
         city (str, opcional): Ciudad
         department (str, opcional): Departamento
         country (str, opcional): País (por defecto: Colombia)
+        latitude (float, opcional): Latitud GPS (debe estar entre -90.0 y 90.0)
+        longitude (float, opcional): Longitud GPS (debe estar entre -180.0 y 180.0)
         credit_limit (float, opcional): Límite de crédito (por defecto: 0.0)
         credit_days (int, opcional): Días de crédito (por defecto: 0)
         is_active (bool, opcional): Estado activo (por defecto: true)
@@ -45,8 +48,11 @@ def create_customer():
             "contact_email": "contacto@hospitalsanjuan.com",
             "contact_phone": "+57 1 234 5678",
             "address": "Calle 45 # 12-34",
+            "neighborhood": "Chapinero",
             "city": "Bogotá",
             "department": "Cundinamarca",
+            "latitude": 4.60971,
+            "longitude": -74.08175,
             "credit_limit": 50000000.00,
             "credit_days": 30
         }
