@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from flask_cors import CORS
 from src.session import db, init_db
 from src.blueprints.inventory import inventory_bp
 from src.blueprints.websocket import websocket_bp
@@ -22,7 +23,8 @@ def create_app(config=None):
             'pool_pre_ping': True,
             'pool_recycle': 300,
         }
-    
+
+    CORS(app)
     init_db(app)
     
     # Registrar blueprints
