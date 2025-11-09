@@ -103,23 +103,31 @@ class GetRouteById:
     Comando para obtener detalle completo de una ruta.
     """
     
-    def __init__(self, route_id: int, include_stops: bool = True, include_assignments: bool = True):
+    def __init__(
+        self, 
+        route_id: int, 
+        include_stops: bool = True, 
+        include_assignments: bool = True,
+        summary_mode: bool = False
+    ):
         """
         Args:
             route_id: ID de la ruta
             include_stops: Incluir paradas en la respuesta
             include_assignments: Incluir asignaciones de pedidos
+            summary_mode: Si True, retorna solo información esencial (modo resumido)
         """
         self.route_id = route_id
         self.include_stops = include_stops
         self.include_assignments = include_assignments
+        self.summary_mode = summary_mode
     
     def execute(self) -> Dict:
         """
         Obtiene detalle completo de la ruta.
         
         Returns:
-            Dict con datos completos de la ruta
+            Dict con datos completos de la ruta (o resumidos si summary_mode=True)
         """
         try:
             route = Session.query(DeliveryRoute).get(self.route_id)
@@ -130,11 +138,16 @@ class GetRouteById:
                     'message': f'Ruta {self.route_id} no encontrada'
                 }
             
-            route_data = route.to_dict(
-                include_stops=self.include_stops,
-                include_vehicle=True,
-                include_assignments=self.include_assignments
-            )
+            if self.summary_mode:
+                # Modo resumido - solo lo esencial
+                route_data = self._build_summary(route)
+            else:
+                # Modo completo
+                route_data = route.to_dict(
+                    include_stops=self.include_stops,
+                    include_vehicle=True,
+                    include_assignments=self.include_assignments
+                )
             
             return {
                 'status': 'success',
@@ -147,6 +160,90 @@ class GetRouteById:
                 'status': 'error',
                 'message': f'Error al obtener ruta: {str(e)}'
             }
+    
+    def _build_summary(self, route: DeliveryRoute) -> Dict:
+        """
+        Construye un resumen compacto de la ruta con solo información esencial.
+        """
+        # Obtener paradas ordenadas
+        stops = sorted(route.stops, key=lambda s: s.sequence_order)
+        
+        # Filtrar solo paradas de entrega (excluir depot y return)
+        delivery_stops = [s for s in stops if s.stop_type == 'delivery']
+        
+        # Obtener todas las asignaciones (ejecutar la query lazy)
+        all_assignments = list(route.assignments)
+        
+        # Construir lista de paradas resumidas
+        stops_summary = []
+        for stop in delivery_stops:
+            # Obtener asignaciones de esta parada
+            stop_assignments = [a for a in all_assignments if a.stop_id == stop.id]
+            
+            stop_info = {
+                'sequence': stop.sequence_order,
+                'customer_name': stop.customer_name or 'Desconocido',
+                'address': stop.delivery_address or 'Sin dirección',
+                'city': stop.city,
+                'coordinates': {
+                    'lat': float(stop.latitude) if stop.latitude else None,
+                    'lng': float(stop.longitude) if stop.longitude else None
+                },
+                'estimated_arrival': stop.estimated_arrival_time.isoformat() if stop.estimated_arrival_time else None,
+                'orders': [
+                    {
+                        'order_id': assignment.order_id,
+                        'order_number': assignment.order_number,
+                        'customer_name': assignment.customer_name or stop.customer_name or 'Desconocido',
+                        'clinical_priority': assignment.clinical_priority,
+                        'requires_cold_chain': assignment.requires_cold_chain
+                    }
+                    for assignment in stop_assignments
+                ],
+                'status': stop.status
+            }
+            stops_summary.append(stop_info)
+        
+        # Construir respuesta resumida
+        return {
+            'id': route.id,
+            'route_code': route.route_code,
+            'status': route.status,
+            'planned_date': route.planned_date.isoformat() if route.planned_date else None,
+            'distribution_center_id': route.distribution_center_id,
+            
+            # Vehículo
+            'vehicle': {
+                'id': route.vehicle.id if route.vehicle else None,
+                'plate': route.vehicle.plate if route.vehicle else None,
+                'type': route.vehicle.vehicle_type if route.vehicle else None,
+                'driver': route.vehicle.driver_name if route.vehicle else None
+            } if route.vehicle else None,
+            
+            # Métricas
+            'metrics': {
+                'total_stops': len(delivery_stops),
+                'total_orders': len(all_assignments),
+                'total_distance_km': float(route.total_distance_km) if route.total_distance_km else 0.0,
+                'estimated_duration_minutes': route.estimated_duration_minutes
+            },
+            
+            # Paradas
+            'stops': stops_summary,
+            
+            # Tiempos
+            'schedule': {
+                'start_time': route.estimated_start_time.isoformat() if route.estimated_start_time else None,
+                'end_time': route.estimated_end_time.isoformat() if route.estimated_end_time else None
+            },
+            
+            # Optimización
+            'optimization_score': float(route.optimization_score) if route.optimization_score else None,
+            
+            # Metadata
+            'created_at': route.created_at.isoformat() if route.created_at else None,
+            'created_by': route.created_by
+        }
 
 
 class GetRoutesByDate:

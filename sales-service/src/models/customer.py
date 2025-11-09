@@ -17,9 +17,12 @@ class Customer(db.Model):
     contact_email = db.Column(db.String(100))
     contact_phone = db.Column(db.String(20))
     address = db.Column(db.String(200))
+    neighborhood = db.Column(db.String(100))
     city = db.Column(db.String(100))
     department = db.Column(db.String(100))
     country = db.Column(db.String(100), default='Colombia')
+    latitude = db.Column(db.Numeric(10, 8))
+    longitude = db.Column(db.Numeric(11, 8))
     credit_limit = db.Column(db.Numeric(15, 2), default=0.0)
     credit_days = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True, nullable=False)
@@ -46,9 +49,12 @@ class Customer(db.Model):
             'contact_email': self.contact_email,
             'contact_phone': self.contact_phone,
             'address': self.address,
+            'neighborhood': self.neighborhood,
             'city': self.city,
             'department': self.department,
             'country': self.country,
+            'latitude': float(self.latitude) if self.latitude else None,
+            'longitude': float(self.longitude) if self.longitude else None,
             'credit_limit': float(self.credit_limit) if self.credit_limit else 0.0,
             'credit_days': self.credit_days,
             'is_active': self.is_active,

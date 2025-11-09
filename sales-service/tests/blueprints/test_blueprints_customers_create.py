@@ -19,6 +19,9 @@ class TestCreateCustomer:
             "address": "Calle 45 # 12-34",
             "city": "Bogotá",
             "department": "Cundinamarca",
+            "neighborhood": "Chapinero",
+            "latitude": 4.60971,
+            "longitude": -74.08175,
             "credit_limit": 50000000.00,
             "credit_days": 30
         }
@@ -224,3 +227,86 @@ class TestCreateCustomer:
         data = response.get_json()
         assert 'error' in data
         assert 'Invalid phone format' in data['error']
+    
+    def test_create_customer_with_coordinates(self, client, db):
+        """Test customer creation with GPS coordinates."""
+        customer_data = {
+            "document_type": "NIT",
+            "document_number": "900999888-7",
+            "business_name": "Hospital GPS Test",
+            "customer_type": "hospital",
+            "neighborhood": "Usaquén",
+            "city": "Bogotá",
+            "latitude": 4.70111,
+            "longitude": -74.03091
+        }
+        
+        response = client.post('/customers',
+                             data=json.dumps(customer_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['customer']['neighborhood'] == 'Usaquén'
+        assert data['customer']['latitude'] == 4.70111
+        assert data['customer']['longitude'] == -74.03091
+    
+    def test_create_customer_invalid_latitude(self, client, db):
+        """Test customer creation with invalid latitude."""
+        customer_data = {
+            "document_type": "NIT",
+            "document_number": "900888777-6",
+            "business_name": "Hospital Test",
+            "customer_type": "hospital",
+            "latitude": 95.0,  # Invalid: > 90.0
+            "longitude": -74.0
+        }
+        
+        response = client.post('/customers',
+                             data=json.dumps(customer_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'error' in data
+        assert 'latitude must be between -90.0 and 90.0' in data['error']
+    
+    def test_create_customer_invalid_longitude(self, client, db):
+        """Test customer creation with invalid longitude."""
+        customer_data = {
+            "document_type": "NIT",
+            "document_number": "900777666-5",
+            "business_name": "Hospital Test",
+            "customer_type": "hospital",
+            "latitude": 4.6,
+            "longitude": -200.0  # Invalid: < -180.0
+        }
+        
+        response = client.post('/customers',
+                             data=json.dumps(customer_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'error' in data
+        assert 'longitude must be between -180.0 and 180.0' in data['error']
+    
+    def test_create_customer_incomplete_coordinates(self, client, db):
+        """Test customer creation with only one coordinate (should fail)."""
+        customer_data = {
+            "document_type": "NIT",
+            "document_number": "900666555-4",
+            "business_name": "Hospital Test",
+            "customer_type": "hospital",
+            "latitude": 4.6
+            # Missing longitude
+        }
+        
+        response = client.post('/customers',
+                             data=json.dumps(customer_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'error' in data
+        assert 'Both latitude and longitude must be provided together' in data['error']

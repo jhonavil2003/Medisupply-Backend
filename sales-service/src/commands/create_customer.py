@@ -95,6 +95,30 @@ class CreateCustomer:
                     raise ValidationError("credit_days must be between 0 and 365")
             except (ValueError, TypeError):
                 raise ValidationError("credit_days must be a valid integer")
+        
+        # Validate latitude if provided
+        if self.data.get('latitude') is not None:
+            try:
+                latitude = float(self.data['latitude'])
+                if latitude < -90.0 or latitude > 90.0:
+                    raise ValidationError("latitude must be between -90.0 and 90.0")
+            except (ValueError, TypeError):
+                raise ValidationError("latitude must be a valid number")
+        
+        # Validate longitude if provided
+        if self.data.get('longitude') is not None:
+            try:
+                longitude = float(self.data['longitude'])
+                if longitude < -180.0 or longitude > 180.0:
+                    raise ValidationError("longitude must be between -180.0 and 180.0")
+            except (ValueError, TypeError):
+                raise ValidationError("longitude must be a valid number")
+        
+        # Validate that if one coordinate is provided, both must be provided
+        has_latitude = self.data.get('latitude') is not None
+        has_longitude = self.data.get('longitude') is not None
+        if has_latitude != has_longitude:
+            raise ValidationError("Both latitude and longitude must be provided together")
     
     def _check_customer_exists(self):
         """Check if customer with same document already exists."""
@@ -117,9 +141,12 @@ class CreateCustomer:
             contact_email=self.data.get('contact_email', '').strip() if self.data.get('contact_email') else None,
             contact_phone=self.data.get('contact_phone', '').strip() if self.data.get('contact_phone') else None,
             address=self.data.get('address', '').strip() if self.data.get('address') else None,
+            neighborhood=self.data.get('neighborhood', '').strip() if self.data.get('neighborhood') else None,
             city=self.data.get('city', '').strip() if self.data.get('city') else None,
             department=self.data.get('department', '').strip() if self.data.get('department') else None,
             country=self.data.get('country', 'Colombia').strip(),
+            latitude=float(self.data['latitude']) if self.data.get('latitude') is not None else None,
+            longitude=float(self.data['longitude']) if self.data.get('longitude') is not None else None,
             credit_limit=float(self.data.get('credit_limit', 0.0)),
             credit_days=int(self.data.get('credit_days', 0)),
             is_active=bool(self.data.get('is_active', True))

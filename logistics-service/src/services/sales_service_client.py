@@ -363,6 +363,118 @@ class SalesServiceClient:
             logger.error(f"Failed to get order {order_id} details: {e}")
             return None
     
+    def get_orders_by_ids(self, order_ids: List[int]) -> Dict[str, Any]:
+        """
+        Obtiene detalles completos de múltiples órdenes por sus IDs.
+        
+        Este método optimiza la comunicación con sales-service al recuperar
+        múltiples órdenes en una sola llamada HTTP usando el endpoint batch.
+        
+        Args:
+            order_ids: Lista de IDs de órdenes a recuperar
+        
+        Returns:
+            Dict con:
+            {
+                'orders': List[Dict],        # Órdenes encontradas con detalles completos
+                'total': int,                 # Número de órdenes encontradas
+                'not_found': List[int],       # IDs de órdenes no encontradas
+                'requested': int              # Número de IDs solicitados
+            }
+            
+            Cada orden incluye:
+            {
+                'id': 123,
+                'order_number': 'ORD-2025-001',
+                'customer_id': 45,
+                'customer_name': 'Hospital San Ignacio',
+                'customer': {
+                    'id': 45,
+                    'razon_social': 'Hospital San Ignacio',
+                    'document': '900123456-1',
+                    ...
+                },
+                'items': [
+                    {
+                        'product_sku': 'MED-001',
+                        'product_name': 'Paracetamol 500mg',
+                        'quantity': 100,
+                        'weight_kg': 2.5,
+                        'volume_m3': 0.05,
+                        'requires_cold_chain': False,
+                        ...
+                    }
+                ],
+                'delivery_address': 'Calle 100 # 15-20',
+                'delivery_city': 'Bogotá',
+                'delivery_department': 'Cundinamarca',
+                'delivery_latitude': 4.6825,
+                'delivery_longitude': -74.0543,
+                'clinical_priority': 1,
+                'requires_cold_chain': True,
+                'estimated_weight_kg': 12.5,
+                'estimated_volume_m3': 0.25,
+                'status': 'confirmed',
+                ...
+            }
+        
+        Raises:
+            requests.exceptions.RequestException: Error de comunicación
+        
+        Example:
+            >>> client = get_sales_service_client()
+            >>> result = client.get_orders_by_ids([101, 102, 103])
+            >>> print(f"Found {result['total']} orders")
+            >>> print(f"Not found: {result['not_found']}")
+        """
+        if not order_ids:
+            logger.warning("get_orders_by_ids called with empty order_ids list")
+            return {
+                'orders': [],
+                'total': 0,
+                'not_found': [],
+                'requested': 0
+            }
+        
+        try:
+            logger.info(f"Fetching batch of {len(order_ids)} orders from sales-service")
+            
+            response = self._make_request(
+                'POST',
+                '/orders/batch',
+                json_data={'order_ids': order_ids}
+            )
+            
+            orders = response.get('orders', [])
+            not_found = response.get('not_found', [])
+            total = response.get('total', len(orders))
+            requested = response.get('requested', len(order_ids))
+            
+            if not_found:
+                logger.warning(f"Orders not found: {not_found}")
+            
+            logger.info(
+                f"Batch retrieval complete: {total} found, "
+                f"{len(not_found)} not found out of {requested} requested"
+            )
+            
+            return {
+                'orders': orders,
+                'total': total,
+                'not_found': not_found,
+                'requested': requested
+            }
+        
+        except Exception as e:
+            logger.error(f"Failed to get orders by IDs: {e}")
+            # Retornar estructura vacía en caso de error (fail gracefully)
+            return {
+                'orders': [],
+                'total': 0,
+                'not_found': order_ids,  # Marcar todos como no encontrados
+                'requested': len(order_ids)
+            }
+    
     def update_order_status(
         self,
         order_id: int,
@@ -396,22 +508,23 @@ class SalesServiceClient:
             json_data['notes'] = notes
         
         try:
+            # Usar PATCH /orders/{id} en lugar de PUT /orders/{id}/status
             response = self._make_request(
-                'PUT',
-                f'/orders/{order_id}/status',
+                'PATCH',
+                f'/orders/{order_id}',
                 json_data=json_data
             )
             
-            success = response.get('status') == 'success'
-            if success:
-                logger.info(f"Updated order {order_id} status to {new_status}")
+            # La respuesta es el objeto order actualizado
+            if response and response.get('id') == order_id:
+                logger.info(f"✅ Updated order {order_id} status to {new_status}")
+                return True
             else:
-                logger.warning(f"Failed to update order {order_id} status")
-            
-            return success
+                logger.warning(f"⚠️ Failed to update order {order_id} status")
+                return False
         
         except Exception as e:
-            logger.error(f"Failed to update order {order_id} status: {e}")
+            logger.error(f"❌ Failed to update order {order_id} status: {e}")
             return False
     
     def mark_orders_as_routed(

@@ -370,6 +370,8 @@ DISTRIBUTION_CENTERS_DATA = [
         'email': 'bogota@medisupply.com',
         'manager_name': 'Carlos Rodríguez',
         'capacity_m3': Decimal('5000.00'),
+        'latitude': Decimal('4.6784548'),  # Calle 100, Bogotá
+        'longitude': Decimal('-74.0567902'),
         'is_active': True,
         'supports_cold_chain': True
     },
@@ -380,44 +382,34 @@ DISTRIBUTION_CENTERS_DATA = [
         'city': 'Medellín',
         'state': 'Antioquia',
         'country': 'Colombia',
-        'postal_code': '050001',
-        'phone': '+57 4 567 8901',
+        'postal_code': '050012',
+        'phone': '+57 4 345 6789',
         'email': 'medellin@medisupply.com',
         'manager_name': 'Ana María López',
-        'capacity_m3': Decimal('3000.00'),
+        'capacity_m3': Decimal('3500.00'),
+        'latitude': Decimal('6.2476376'),  # Centro Medellín
+        'longitude': Decimal('-75.5658153'),
         'is_active': True,
         'supports_cold_chain': True
     },
     {
         'code': 'CEDIS-CALI',
         'name': 'Centro de Distribución Cali',
-        'address': 'Avenida 6N # 25-40',
+        'address': 'Avenida 3N # 50-20',
         'city': 'Cali',
         'state': 'Valle del Cauca',
         'country': 'Colombia',
-        'postal_code': '760001',
-        'phone': '+57 2 345 6789',
+        'postal_code': '760042',
+        'phone': '+57 2 567 8901',
         'email': 'cali@medisupply.com',
-        'manager_name': 'Jorge Martínez',
+        'manager_name': 'Luis Hernández',
         'capacity_m3': Decimal('2500.00'),
+        'latitude': Decimal('3.4516467'),  # Norte de Cali
+        'longitude': Decimal('-76.5319854'),
         'is_active': True,
         'supports_cold_chain': False
-    },
-    {
-        'code': 'CEDIS-BAQ',
-        'name': 'Centro de Distribución Barranquilla',
-        'address': 'Carrera 38 # 74-194',
-        'city': 'Barranquilla',
-        'state': 'Atlántico',
-        'country': 'Colombia',
-        'postal_code': '080001',
-        'phone': '+57 5 678 9012',
-        'email': 'barranquilla@medisupply.com',
-        'manager_name': 'Patricia Gómez',
-        'capacity_m3': Decimal('2000.00'),
-        'is_active': True,
-        'supports_cold_chain': True
     }
+    # CEDIS-BAQ eliminado - solo 3 centros operativos
 ]
 
 # ============================================================================
@@ -434,9 +426,12 @@ CUSTOMERS_DATA = [
         'contact_email': 'compras@hospitalsanignacio.com',
         'contact_phone': '+57 1 5946161',
         'address': 'Carrera 7 No. 40-62',
+        'neighborhood': 'Teusaquillo',
         'city': 'Bogotá',
         'department': 'Cundinamarca',
         'country': 'Colombia',
+        'latitude': Decimal('4.6285642'),  # Hospital San Ignacio
+        'longitude': Decimal('-74.0654321'),
         'credit_limit': Decimal('50000000.00'),
         'credit_days': 60,
         'is_active': True
@@ -451,9 +446,12 @@ CUSTOMERS_DATA = [
         'contact_email': 'compras@clinicaelbosque.com',
         'contact_phone': '+57 1 6489000',
         'address': 'Calle 134 No. 7B-83',
+        'neighborhood': 'Usaquén',
         'city': 'Bogotá',
         'department': 'Cundinamarca',
         'country': 'Colombia',
+        'latitude': Decimal('4.7131742'),  # Clínica El Bosque
+        'longitude': Decimal('-74.0305123'),
         'credit_limit': Decimal('30000000.00'),
         'credit_days': 45,
         'is_active': True
@@ -468,9 +466,12 @@ CUSTOMERS_DATA = [
         'contact_email': 'compras@cruzverde.com.co',
         'contact_phone': '+57 1 7428000',
         'address': 'Carrera 15 No. 88-64',
+        'neighborhood': 'Chicó',
         'city': 'Bogotá',
         'department': 'Cundinamarca',
         'country': 'Colombia',
+        'latitude': Decimal('4.6653289'),  # Cruz Verde - Carrera 15
+        'longitude': Decimal('-74.0547891'),
         'credit_limit': Decimal('20000000.00'),
         'credit_days': 30,
         'is_active': True
@@ -485,9 +486,12 @@ CUSTOMERS_DATA = [
         'contact_email': 'ventas@dismeva.com',
         'contact_phone': '+57 2 3331234',
         'address': 'Calle 5 No. 38-71',
+        'neighborhood': 'Granada',
         'city': 'Cali',
         'department': 'Valle del Cauca',
         'country': 'Colombia',
+        'latitude': Decimal('3.4365432'),  # Cali - Granada
+        'longitude': Decimal('-76.5274567'),
         'credit_limit': Decimal('40000000.00'),
         'credit_days': 60,
         'is_active': True
@@ -502,9 +506,12 @@ CUSTOMERS_DATA = [
         'contact_email': 'compras@hptu.org.co',
         'contact_phone': '+57 4 4459000',
         'address': 'Calle 78B No. 69-240',
+        'neighborhood': 'Robledo',
         'city': 'Medellín',
         'department': 'Antioquia',
         'country': 'Colombia',
+        'latitude': Decimal('6.2685432'),  # Hospital Pablo Tobón
+        'longitude': Decimal('-75.5987654'),
         'credit_limit': Decimal('60000000.00'),
         'credit_days': 90,
         'is_active': True

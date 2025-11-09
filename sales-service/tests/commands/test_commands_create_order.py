@@ -521,3 +521,113 @@ class TestCreateOrderCommand:
         items = OrderItem.query.filter_by(order_id=order.id).all()
         
         assert float(items[0].tax_percentage) == 19.0
+    
+    def test_create_order_saves_customer_snapshot(self, db, sample_customer):
+        """Test that order saves customer snapshot data at creation time."""
+        # Update customer with complete information
+        sample_customer.business_name = "Hospital Universitario Test"
+        sample_customer.document_number = "900123456-7"
+        sample_customer.contact_name = "Dr. María González"
+        sample_customer.contact_phone = "+57 300 1234567"
+        sample_customer.contact_email = "maria.gonzalez@hospital.com"
+        sample_customer.neighborhood = "Chapinero"
+        sample_customer.latitude = 4.653396
+        sample_customer.longitude = -74.062862
+        db.session.commit()
+        
+        order_data = {
+            'customer_id': sample_customer.id,
+            'seller_id': 'SELLER-001',
+            'items': [
+                {
+                    'product_sku': 'JER-001',
+                    'quantity': 10
+                }
+            ]
+        }
+        
+        with patch('src.commands.create_order.IntegrationService') as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.validate_order_items.return_value = [
+                {
+                    'product_sku': 'JER-001',
+                    'product_name': 'Jeringa desechable 5ml',
+                    'quantity': 10,
+                    'unit_price': 1500.0,
+                    'distribution_center_code': 'DC-BOG-001',
+                    'stock_confirmed': True
+                }
+            ]
+            
+            command = CreateOrder(order_data)
+            result = command.execute()
+        
+        # Verify customer snapshot data was saved
+        assert result['customer_business_name'] == "Hospital Universitario Test"
+        assert result['customer_document_number'] == "900123456-7"
+        assert result['customer_contact_name'] == "Dr. María González"
+        assert result['customer_contact_phone'] == "+57 300 1234567"
+        assert result['customer_contact_email'] == "maria.gonzalez@hospital.com"
+        
+        # Verify delivery location data from customer
+        assert result['delivery_neighborhood'] == "Chapinero"
+        assert result['delivery_latitude'] == 4.653396
+        assert result['delivery_longitude'] == -74.062862
+        
+        # Verify data persisted in database
+        order = Order.query.filter_by(id=result['id']).first()
+        assert order.customer_business_name == "Hospital Universitario Test"
+        assert order.customer_document_number == "900123456-7"
+        assert order.customer_contact_phone == "+57 300 1234567"
+        assert order.delivery_neighborhood == "Chapinero"
+        assert float(order.delivery_latitude) == 4.653396
+        assert float(order.delivery_longitude) == -74.062862
+    
+    def test_create_order_with_custom_delivery_location(self, db, sample_customer):
+        """Test that order can override customer location with custom delivery data."""
+        sample_customer.neighborhood = "Chapinero"
+        sample_customer.latitude = 4.653396
+        sample_customer.longitude = -74.062862
+        db.session.commit()
+        
+        order_data = {
+            'customer_id': sample_customer.id,
+            'seller_id': 'SELLER-001',
+            'items': [
+                {
+                    'product_sku': 'JER-001',
+                    'quantity': 10
+                }
+            ],
+            'delivery_neighborhood': 'Usaquén',
+            'delivery_latitude': 4.701594,
+            'delivery_longitude': -74.030487
+        }
+        
+        with patch('src.commands.create_order.IntegrationService') as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.validate_order_items.return_value = [
+                {
+                    'product_sku': 'JER-001',
+                    'product_name': 'Jeringa desechable 5ml',
+                    'quantity': 10,
+                    'unit_price': 1500.0,
+                    'distribution_center_code': 'DC-BOG-001',
+                    'stock_confirmed': True
+                }
+            ]
+            
+            command = CreateOrder(order_data)
+            result = command.execute()
+        
+        # Verify custom delivery location was used instead of customer's
+        assert result['delivery_neighborhood'] == 'Usaquén'
+        assert result['delivery_latitude'] == 4.701594
+        assert result['delivery_longitude'] == -74.030487
+        
+        # Verify in database
+        order = Order.query.filter_by(id=result['id']).first()
+        assert order.delivery_neighborhood == 'Usaquén'
+        assert float(order.delivery_latitude) == 4.701594
+        assert float(order.delivery_longitude) == -74.030487
+
