@@ -325,7 +325,7 @@ class TestOrdersBlueprint:
         assert 'not found' in data['error'].lower()
     
     def test_update_order_not_pending_error(self, client, sample_order, db):
-        """Test PATCH /orders/<id> - 400 when order is not PENDING."""
+        """Test PATCH /orders/<id> - 200 when order is confirmed (now allowed)."""
         # Change order status to confirmed
         sample_order.status = 'confirmed'
         db.session.commit()
@@ -340,15 +340,15 @@ class TestOrdersBlueprint:
             content_type='application/json'
         )
         
-        assert response.status_code == 400
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'error' in data
-        assert 'Solo se pueden editar órdenes pendientes' in data['error']
+        assert data['notes'] == 'Try to update confirmed order'
+        assert data['status'] == 'confirmed'
     
     def test_update_order_invalid_status_transition(self, client, sample_order):
-        """Test PATCH /orders/<id> - 400 for invalid status transition."""
+        """Test PATCH /orders/<id> - 200 for PENDING → CANCELLED (now allowed)."""
         update_data = {
-            'status': 'cancelled'  # PENDING → CANCELLED not allowed
+            'status': 'cancelled'  # PENDING → CANCELLED is allowed
         }
         
         response = client.patch(
@@ -357,10 +357,9 @@ class TestOrdersBlueprint:
             content_type='application/json'
         )
         
-        assert response.status_code == 400
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'error' in data
-        assert 'Invalid status transition' in data['error']
+        assert data['status'] == 'cancelled'
     
     def test_update_order_empty_body(self, client, sample_order):
         """Test PATCH /orders/<id> - 400 when request body is empty."""

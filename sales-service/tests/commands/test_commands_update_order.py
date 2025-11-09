@@ -210,7 +210,7 @@ class TestUpdateOrderCommand:
         assert "not found" in str(exc_info.value).lower()
     
     def test_update_order_not_pending_returns_error(self, db, sample_order):
-        """Test that only PENDING orders can be updated."""
+        """Test that confirmed orders can now be updated."""
         # Change order to confirmed
         sample_order.status = 'confirmed'
         db.session.commit()
@@ -218,26 +218,21 @@ class TestUpdateOrderCommand:
         update_data = {'notes': 'Try to update'}
         
         command = UpdateOrder(sample_order.id, update_data)
+        result = command.execute()
         
-        with pytest.raises(ApiError) as exc_info:
-            command.execute()
-        
-        assert exc_info.value.status_code == 400
-        assert "Solo se pueden editar órdenes pendientes" in str(exc_info.value)
+        assert result['notes'] == 'Try to update'
+        assert result['status'] == 'confirmed'
     
     def test_update_order_invalid_status_transition(self, db, sample_order):
-        """Test invalid status transitions are rejected."""
+        """Test PENDING → CANCELLED transition is now allowed."""
         update_data = {
-            'status': 'cancelled'  # PENDING → CANCELLED not allowed
+            'status': 'cancelled'  # PENDING → CANCELLED is allowed
         }
         
         command = UpdateOrder(sample_order.id, update_data)
+        result = command.execute()
         
-        with pytest.raises(ApiError) as exc_info:
-            command.execute()
-        
-        assert exc_info.value.status_code == 400
-        assert "Invalid status transition" in str(exc_info.value)
+        assert result['status'] == 'cancelled'
     
     def test_update_order_items_empty_list_error(self, db, sample_order):
         """Test that items list cannot be empty."""
