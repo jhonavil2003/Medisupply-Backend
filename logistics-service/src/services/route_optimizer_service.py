@@ -36,7 +36,7 @@ class RouteOptimizerService:
         orders: List[Dict],
         distribution_center_id: int,
         planned_date: date,
-        optimization_strategy: str = 'balanced',
+        optimization_strategy: str = 'balanced',  # DEFAULT: Balancea distancia, tiempo, capacidad y equidad
         max_execution_time: int = 30
     ) -> Dict:
         """

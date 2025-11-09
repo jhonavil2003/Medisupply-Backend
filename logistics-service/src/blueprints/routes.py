@@ -16,11 +16,10 @@ Endpoints:
 """
 
 from flask import Blueprint, request, jsonify, make_response
-from datetime import datetime, time
+from datetime import datetime
 import logging
 
-from src.commands.generate_routes import GenerateRoutes, CancelRoute, UpdateRouteStatus
-from src.commands.generate_routes_from_sales import GenerateRoutesFromSalesService
+from src.commands.generate_routes import GenerateRoutesCommand, CancelRoute, UpdateRouteStatus
 from src.commands.get_routes import GetRoutes, GetRouteById, GetRoutesByDate
 from src.commands.get_vehicles import (
     GetVehicles,
@@ -46,61 +45,102 @@ def generate_routes():
     """
     POST /routes/generate
     
-    Genera rutas optimizadas para un conjunto de pedidos.
+    Genera rutas optimizadas a partir de IDs de órdenes.
     
-    Body:
+    **NUEVO**: Versión simplificada que recibe solo IDs de órdenes y obtiene
+    los detalles automáticamente desde sales-service.
+    
+    Request Body:
     {
         "distribution_center_id": 1,
-        "planned_date": "2025-11-05",
-        "orders": [
-            {
-                "id": 1,
-                "order_number": "ORD-001",
-                "customer_id": 10,
-                "customer_name": "Hospital San Ignacio",
-                "delivery_address": "Calle 100 # 15-20",
-                "city": "Bogotá",
-                "department": "Cundinamarca",
-                "weight_kg": 50.5,
-                "volume_m3": 0.8,
-                "requires_cold_chain": true,
-                "clinical_priority": 1,
-                "time_window_start": "09:00",
-                "time_window_end": "12:00"
-            }
-        ],
-        "optimization_strategy": "balanced",
-        "force_regenerate": false
+        "planned_date": "2025-11-10",
+        "order_ids": [101, 102, 103, 104, 105],
+        "optimization_strategy": "balanced",  // opcional (DEFAULT - RECOMENDADO)
+        "force_regenerate": false             // opcional
     }
     
-    Response:
+    Estrategias de optimización disponibles:
+    - 'balanced': Balance entre distancia, tiempo, capacidad y equidad (DEFAULT - RECOMENDADO)
+    - 'minimize_distance': Minimiza distancia y consumo de gasolina
+    - 'minimize_time': Prioriza minimizar tiempo de entrega
+    - 'minimize_cost': Minimiza costo operativo total
+    - 'priority_first': Entrega primero a clientes críticos
+    
+    Response Body (RESUMIDO):
     {
         "status": "success",
-        "message": "...",
-        "routes_generated": 3,
-        "total_orders_assigned": 15,
-        "computation_time_seconds": 12.5,
-        "routes": [...],
-        "metrics": {...}
+        "summary": {
+            "routes_generated": 2,
+            "orders_assigned": 5,
+            "orders_unassigned": 0,
+            "total_distance_km": 45.3,
+            "estimated_duration_hours": 2.5,
+            "optimization_score": 87.5
+        },
+        "routes": [
+            {
+                "id": 123,
+                "route_code": "ROUTE-20251110-DC1-001",
+                "vehicle": {
+                    "id": 10,
+                    "plate": "ABC-123",
+                    "type": "refrigerated_truck"
+                },
+                "stops_count": 3,
+                "orders_count": 3,
+                "distance_km": 22.5,
+                "duration_minutes": 75,
+                "status": "draft"
+            }
+        ],
+        "warnings": [],
+        "errors": [],
+        "computation_time_seconds": 12.3
     }
+    
+    Posibles status:
+    - 'success': Todas las órdenes fueron asignadas
+    - 'partial': Algunas órdenes no pudieron ser asignadas
+    - 'failed': Error en el proceso
+    - 'no_orders': No se proporcionaron IDs de órdenes
+    - 'no_orders_found': Ninguna orden encontrada en sales-service
+    - 'no_valid_orders': Ninguna orden cumple requisitos
+    - 'no_vehicles': No hay vehículos disponibles
+    - 'existing_routes': Ya existen rutas para la fecha (use force_regenerate)
+    - 'sales_service_unavailable': Sales-service no responde
     """
     try:
         data = request.get_json()
         
         # Validar campos requeridos
+        if not data:
+            return jsonify({
+                'error': 'Request body is required',
+                'status_code': 400
+            }), 400
+        
         if not data.get('distribution_center_id'):
             return jsonify({
-                'error': 'distribution_center_id es requerido'
+                'error': 'distribution_center_id es requerido',
+                'status_code': 400
             }), 400
         
         if not data.get('planned_date'):
             return jsonify({
-                'error': 'planned_date es requerido'
+                'error': 'planned_date es requerido',
+                'status_code': 400
             }), 400
         
-        if not data.get('orders'):
+        if 'order_ids' not in data:
             return jsonify({
-                'error': 'orders es requerido y debe contener al menos un pedido'
+                'error': 'order_ids es requerido',
+                'status_code': 400
+            }), 400
+        
+        if not isinstance(data['order_ids'], list):
+            return jsonify({
+                'error': 'order_ids debe ser un array de enteros',
+                'status_code': 400
             }), 400
         
         # Parsear fecha
@@ -108,152 +148,58 @@ def generate_routes():
             planned_date = datetime.strptime(data['planned_date'], '%Y-%m-%d').date()
         except ValueError:
             return jsonify({
-                'error': 'planned_date debe estar en formato YYYY-MM-DD'
+                'error': 'planned_date debe estar en formato YYYY-MM-DD',
+                'status_code': 400
             }), 400
         
-        # Parsear ventanas de tiempo en orders
-        orders = []
-        for order in data['orders']:
-            order_copy = order.copy()
-            
-            # Convertir time_window_start/end de string a time
-            if order.get('time_window_start'):
-                try:
-                    hour, minute = map(int, order['time_window_start'].split(':'))
-                    order_copy['time_window_start'] = time(hour, minute)
-                except (ValueError, TypeError, AttributeError):
-                    # Formato inválido, se ignora la ventana de tiempo
-                    pass
-            
-            if order.get('time_window_end'):
-                try:
-                    hour, minute = map(int, order['time_window_end'].split(':'))
-                    order_copy['time_window_end'] = time(hour, minute)
-                except (ValueError, TypeError, AttributeError):
-                    # Formato inválido, se ignora la ventana de tiempo
-                    pass
-            
-            orders.append(order_copy)
+        # Validar estrategia de optimización
+        valid_strategies = ['balanced', 'minimize_time', 'minimize_distance', 'minimize_cost', 'priority_first']
+        optimization_strategy = data.get('optimization_strategy', 'balanced')
+        
+        if optimization_strategy not in valid_strategies:
+            return jsonify({
+                'error': f'optimization_strategy debe ser uno de: {", ".join(valid_strategies)}',
+                'status_code': 400
+            }), 400
         
         # Crear comando
-        command = GenerateRoutes(
+        command = GenerateRoutesCommand(
             distribution_center_id=data['distribution_center_id'],
+            order_ids=data['order_ids'],
             planned_date=planned_date,
-            orders=orders,
-            optimization_strategy=data.get('optimization_strategy', 'balanced'),
+            optimization_strategy=optimization_strategy,
             force_regenerate=data.get('force_regenerate', False),
-            created_by=data.get('created_by', 'api')
+            created_by=data.get('created_by', 'api_user')
         )
         
         # Ejecutar
         result = command.execute()
         
-        # Determinar código de respuesta
-        if result['status'] == 'success':
-            return jsonify(result), 200
-        elif result['status'] in ['no_orders', 'no_vehicles', 'existing_routes']:
-            return jsonify(result), 200
-        elif result['status'] == 'partial':
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 500
+        # Determinar código de respuesta HTTP
+        status_code_map = {
+            'success': 200,
+            'partial': 200,
+            'no_orders': 400,
+            'no_orders_found': 404,
+            'no_valid_orders': 400,
+            'no_vehicles': 409,
+            'existing_routes': 409,
+            'sales_service_unavailable': 503,
+            'optimization_failed': 500,
+            'failed': 500
+        }
+        
+        status_code = status_code_map.get(result['status'], 200)
+        
+        return jsonify(result), status_code
     
     except Exception as e:
         logger.exception(f"Error en endpoint /routes/generate: {e}")
         return jsonify({
+            'status': 'failed',
             'error': 'Error interno del servidor',
-            'message': str(e)
-        }), 500
-
-
-@routes_bp.route('/generate/auto', methods=['POST'])
-def generate_routes_auto():
-    """
-    POST /routes/generate/auto
-    
-    Genera rutas optimizadas obteniendo pedidos automáticamente desde sales-service.
-    
-    Este endpoint simplifica la generación de rutas al no requerir que el cliente
-    envíe la lista de pedidos. En su lugar, consulta automáticamente a sales-service
-    para obtener los pedidos confirmados pendientes de rutear.
-    
-    Body:
-    {
-        "distribution_center_id": 1,
-        "planned_date": "2025-11-05",
-        "optimization_strategy": "balanced",
-        "force_regenerate": false,
-        "max_orders": 100
-    }
-    
-    Response:
-    {
-        "status": "success",
-        "message": "...",
-        "routes_generated": 3,
-        "total_orders_assigned": 15,
-        "computation_time_seconds": 12.5,
-        "routes": [...],
-        "metrics": {...},
-        "sales_service_integration": {
-            "orders_fetched": 18,
-            "orders_valid": 15,
-            "orders_invalid": 3,
-            "orders_updated": 15,
-            "communication_errors": []
-        }
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        # Validar campos requeridos
-        if not data.get('distribution_center_id'):
-            return jsonify({
-                'error': 'distribution_center_id es requerido'
-            }), 400
-        
-        if not data.get('planned_date'):
-            return jsonify({
-                'error': 'planned_date es requerido'
-            }), 400
-        
-        # Parsear fecha
-        try:
-            planned_date = datetime.strptime(data['planned_date'], '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({
-                'error': 'planned_date debe estar en formato YYYY-MM-DD'
-            }), 400
-        
-        # Crear comando
-        command = GenerateRoutesFromSalesService(
-            distribution_center_id=data['distribution_center_id'],
-            planned_date=planned_date,
-            optimization_strategy=data.get('optimization_strategy', 'balanced'),
-            force_regenerate=data.get('force_regenerate', False),
-            created_by=data.get('created_by', 'api_user'),
-            max_orders=data.get('max_orders')
-        )
-        
-        # Ejecutar
-        result = command.execute()
-        
-        # Determinar código de respuesta
-        if result['status'] == 'success':
-            return jsonify(result), 200
-        elif result['status'] in ['no_orders', 'no_valid_orders', 'sales_service_unavailable', 'existing_routes']:
-            return jsonify(result), 200
-        elif result['status'] == 'partial':
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 500
-    
-    except Exception as e:
-        logger.exception(f"Error en endpoint /routes/generate/auto: {e}")
-        return jsonify({
-            'error': 'Error interno del servidor',
-            'message': str(e)
+            'message': str(e),
+            'status_code': 500
         }), 500
 
 
@@ -312,18 +258,52 @@ def get_routes():
 @routes_bp.route('/<int:route_id>', methods=['GET'])
 def get_route_detail(route_id):
     """
-    GET /routes/<id>?include_stops=true&include_assignments=true
+    GET /routes/<id>?summary=true&include_stops=true&include_assignments=true
     
-    Obtiene detalle completo de una ruta.
+    Obtiene detalle de una ruta.
+    
+    Query params:
+    - summary: true (default) = respuesta resumida y compacta
+               false = respuesta completa con todos los detalles
+    - include_stops: true/false (solo aplica cuando summary=false)
+    - include_assignments: true/false (solo aplica cuando summary=false)
+    
+    Ejemplo resumido (summary=true - DEFAULT):
+    {
+        "status": "success",
+        "route": {
+            "id": 3,
+            "route_code": "ROUTE-20251109-DC1-003",
+            "status": "draft",
+            "vehicle": {"plate": "ABC-123", "type": "refrigerated_truck"},
+            "metrics": {
+                "total_stops": 9,
+                "total_orders": 9,
+                "total_distance_km": 51.34,
+                "estimated_duration_minutes": 1097
+            },
+            "stops": [
+                {
+                    "sequence": 1,
+                    "address": "Carrera 22 #39-80",
+                    "city": "Bogotá",
+                    "orders": [{"order_number": "ORD-001", "customer_name": "Cliente X"}]
+                }
+            ]
+        }
+    }
     """
     try:
+        # Por defecto, usar modo resumido
+        summary_mode = request.args.get('summary', 'true').lower() == 'true'
         include_stops = request.args.get('include_stops', 'true').lower() == 'true'
         include_assignments = request.args.get('include_assignments', 'true').lower() == 'true'
         
         command = GetRouteById(
             route_id=route_id,
             include_stops=include_stops,
-            include_assignments=include_assignments
+            include_assignments=include_assignments,
+            summary_mode=summary_mode
         )
         
         result = command.execute()
