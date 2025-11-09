@@ -257,9 +257,9 @@ class TestOrdersUpdateErrorHandling:
                 'between 0 and 100' in data['error'].lower())
     
     def test_update_order_invalid_status_transition(self, client, sample_order):
-        """Test PATCH with invalid status transition returns 400."""
+        """Test PATCH with PENDING → CANCELLED transition returns 200 (now allowed)."""
         update_data = {
-            'status': 'cancelled'  # PENDING → CANCELLED not allowed
+            'status': 'cancelled'  # PENDING → CANCELLED is allowed
         }
         
         response = client.patch(
@@ -268,13 +268,12 @@ class TestOrdersUpdateErrorHandling:
             content_type='application/json'
         )
         
-        assert response.status_code == 400
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'error' in data
-        assert 'transition' in data['error'].lower()
+        assert data['status'] == 'cancelled'
     
     def test_update_order_not_pending(self, client, sample_order, db):
-        """Test PATCH on non-pending order returns 400."""
+        """Test PATCH on confirmed order returns 200 (now allowed)."""
         # Change order to confirmed
         sample_order.status = 'confirmed'
         db.session.commit()
@@ -289,10 +288,10 @@ class TestOrdersUpdateErrorHandling:
             content_type='application/json'
         )
         
-        assert response.status_code == 400
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert 'error' in data
-        assert 'Solo se pueden editar órdenes pendientes' in data['error']
+        assert data['notes'] == 'Try to update'
+        assert data['status'] == 'confirmed'
     
     # ==================== 404 NOT FOUND TESTS ====================
     

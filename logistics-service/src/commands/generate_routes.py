@@ -1,50 +1,57 @@
 """
-Comando para generar rutas de entrega optimizadas.
+Comandos para generación y gestión de rutas de entrega optimizadas.
 
-Este comando orquesta la generación de rutas desde pedidos confirmados,
-integrándose con sales-service y utilizando el RouteOptimizerService.
+Incluye:
+- GenerateRoutesCommand: Comando unificado para generar rutas (recibe solo order_ids)
+- CancelRoute: Comando para cancelar rutas
+- UpdateRouteStatus: Comando para actualizar estados de rutas
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime, date, time
 import logging
 
 from src.models.vehicle import Vehicle
 from src.models.delivery_route import DeliveryRoute
 from src.services.route_optimizer_service import RouteOptimizerService
+from src.services.sales_service_client import get_sales_service_client
 from src.session import Session
 
 logger = logging.getLogger(__name__)
 
 
-def _serialize_order_for_json(order: Dict) -> Dict:
-    """
-    Serializa un pedido para que sea compatible con JSON.
-    Convierte objetos datetime.time a strings.
-    """
-    serialized = order.copy()
-    
-    # Convertir time_window_start/end si existen
-    if isinstance(serialized.get('time_window_start'), time):
-        serialized['time_window_start'] = serialized['time_window_start'].isoformat()
-    
-    if isinstance(serialized.get('time_window_end'), time):
-        serialized['time_window_end'] = serialized['time_window_end'].isoformat()
-    
-    return serialized
+# =============================================================================
+# COMANDO PRINCIPAL (MODERNO) - GenerateRoutesCommand
+# =============================================================================
 
-
-class GenerateRoutes:
+class GenerateRoutesCommand:
     """
-    Comando para generar rutas de entrega optimizadas.
+    Comando unificado para generar rutas de entrega optimizadas.
+    
+    Este comando simplifica el proceso recibiendo solo IDs de órdenes y
+    obteniendo automáticamente los detalles desde sales-service.
+    
+    Características:
+    - Recibe solo order_ids (interfaz simple)
+    - Obtiene detalles automáticamente desde sales-service
+    - Valida estado de órdenes (confirmed, no ruteadas)
+    - Response resumido y enfocado en valor
+    - Integración completa con Google Maps API
+    
+    Flujo:
+    1. Obtiene detalles de órdenes desde sales-service
+    2. Valida que las órdenes estén confirmadas y no ruteadas
+    3. Ejecuta optimización de rutas con OR-Tools
+    4. Persiste rutas en base de datos
+    5. Actualiza estado de órdenes en sales-service
     """
     
     def __init__(
         self,
         distribution_center_id: int,
+        order_ids: List[int],
         planned_date: date,
-        orders: List[Dict],
-        optimization_strategy: str = 'balanced',
+        optimization_strategy: str = 'balanced',  # DEFAULT: Balancea múltiples objetivos
         force_regenerate: bool = False,
         created_by: str = 'system'
     ):
@@ -53,215 +60,473 @@ class GenerateRoutes:
         
         Args:
             distribution_center_id: ID del centro de distribución
+            order_ids: Lista de IDs de órdenes a rutear
             planned_date: Fecha planeada de entrega
-            orders: Lista de pedidos a rutear (estructura completa)
             optimization_strategy: Estrategia de optimización
-                - 'balanced': Balance entre costo, tiempo y prioridades
+                - 'balanced': Balance entre distancia, tiempo, capacidad y equidad (DEFAULT - RECOMENDADO)
+                - 'minimize_distance': Minimiza distancia y consumo de gasolina
                 - 'minimize_time': Prioriza tiempo de entrega
-                - 'minimize_distance': Minimiza distancia recorrida
-                - 'minimize_cost': Minimiza costo operativo
+                - 'minimize_cost': Minimiza costo operativo total
                 - 'priority_first': Entrega primero a clientes críticos
             force_regenerate: Si True, regenera rutas aunque ya existan
             created_by: Usuario que solicita la generación
         """
         self.distribution_center_id = distribution_center_id
+        self.order_ids = order_ids if order_ids else []
         self.planned_date = planned_date
-        self.orders = orders
         self.optimization_strategy = optimization_strategy
         self.force_regenerate = force_regenerate
         self.created_by = created_by
+        self.sales_client = get_sales_service_client()
     
     def execute(self) -> Dict:
         """
         Ejecuta la generación de rutas.
         
-        Flujo:
-        1. Validar que no existan rutas activas para la fecha (si no es force_regenerate)
-        2. Validar que hay pedidos para rutear
-        3. Obtener vehículos disponibles
-        4. Ejecutar optimización con RouteOptimizerService
-        5. Guardar rutas en BD
-        6. Retornar resultado
-        
         Returns:
-            Dict con resultado:
+            Dict con resultado RESUMIDO:
             {
-                'status': 'success' | 'no_orders' | 'no_vehicles' | 'failed',
-                'message': str,
-                'routes_generated': int,
-                'total_orders_assigned': int,
-                'total_orders_unassigned': int,
-                'computation_time_seconds': float,
-                'routes': List[Dict],  # Serialización de rutas
-                'unassigned_orders': List[Dict],
-                'metrics': Dict,
-                'errors': List[str]
+                'status': 'success' | 'partial' | 'failed' | 'no_orders' | ...,
+                'summary': {
+                    'routes_generated': int,
+                    'orders_assigned': int,
+                    'orders_unassigned': int,
+                    'total_distance_km': float,
+                    'estimated_duration_hours': float,
+                    'optimization_score': float
+                },
+                'routes': [
+                    {
+                        'id': int,
+                        'route_code': str,
+                        'vehicle': {'id': int, 'plate': str, 'type': str},
+                        'stops_count': int,
+                        'orders_count': int,
+                        'distance_km': float,
+                        'duration_minutes': int,
+                        'status': str
+                    }
+                ],
+                'warnings': List[str],
+                'errors': List[str],
+                'computation_time_seconds': float
             }
         """
         start_time = datetime.now()
+        errors = []
+        warnings = []
         
         try:
-            # 1. Verificar rutas existentes
+            # PASO 1: Verificar conectividad con sales-service
+            logger.info("🔍 Verificando conectividad con sales-service...")
+            if not self.sales_client.health_check():
+                logger.error("❌ Sales service no disponible")
+                return self._build_error_response(
+                    status='sales_service_unavailable',
+                    message='No se pudo conectar con sales-service',
+                    errors=['Sales service is down or unreachable'],
+                    start_time=start_time
+                )
+            
+            # PASO 2: Validar que se proporcionaron IDs de órdenes
+            if not self.order_ids:
+                logger.info("⚠️ No se proporcionaron IDs de órdenes")
+                return self._build_error_response(
+                    status='no_orders',
+                    message='No se proporcionaron IDs de órdenes para rutear',
+                    start_time=start_time
+                )
+            
+            logger.info(f"📋 Solicitadas {len(self.order_ids)} órdenes para rutear")
+            
+            # PASO 3: Obtener detalles de órdenes desde sales-service
+            logger.info("📡 Obteniendo detalles de órdenes desde sales-service...")
+            batch_result = self.sales_client.get_orders_by_ids(self.order_ids)
+            
+            orders_data = batch_result.get('orders', [])
+            not_found_ids = batch_result.get('not_found', [])
+            
+            if not_found_ids:
+                warnings.append(f"{len(not_found_ids)} órdenes no encontradas: {not_found_ids}")
+                logger.warning(f"⚠️ Órdenes no encontradas: {not_found_ids}")
+            
+            if not orders_data:
+                logger.error("❌ Ninguna orden encontrada en sales-service")
+                return self._build_error_response(
+                    status='no_orders_found',
+                    message='Ninguna de las órdenes solicitadas fue encontrada en sales-service',
+                    errors=[f'Order IDs not found: {not_found_ids}'],
+                    start_time=start_time
+                )
+            
+            logger.info(f"✅ Obtenidas {len(orders_data)} órdenes desde sales-service")
+            
+            # PASO 4: Validar estado de las órdenes
+            logger.info("🔍 Validando estado de órdenes...")
+            valid_orders, validation_errors = self._validate_orders(orders_data)
+            
+            if validation_errors:
+                warnings.extend(validation_errors)
+                logger.warning(f"⚠️ {len(validation_errors)} órdenes con problemas de validación")
+            
+            if not valid_orders:
+                logger.error("❌ Ninguna orden válida para rutear")
+                return self._build_error_response(
+                    status='no_valid_orders',
+                    message='Ninguna orden cumple con los requisitos para ser ruteada',
+                    errors=validation_errors,
+                    start_time=start_time
+                )
+            
+            logger.info(f"✅ {len(valid_orders)} órdenes válidas para rutear")
+            
+            # PASO 5: Verificar rutas existentes (si no es force_regenerate)
             if not self.force_regenerate:
-                existing_routes = Session.query(DeliveryRoute).filter(
+                existing_routes_count = Session.query(DeliveryRoute).filter(
                     DeliveryRoute.distribution_center_id == self.distribution_center_id,
                     DeliveryRoute.planned_date == self.planned_date,
                     DeliveryRoute.status.in_(['draft', 'active', 'in_progress'])
                 ).count()
                 
-                if existing_routes > 0:
+                if existing_routes_count > 0:
                     logger.warning(
-                        f"Ya existen {existing_routes} rutas activas para "
+                        f"⚠️ Ya existen {existing_routes_count} rutas activas para "
                         f"DC {self.distribution_center_id} en {self.planned_date}"
                     )
-                    return {
-                        'status': 'existing_routes',
-                        'message': (
-                            f'Ya existen {existing_routes} rutas activas para esta fecha. '
+                    return self._build_error_response(
+                        status='existing_routes',
+                        message=(
+                            f'Ya existen {existing_routes_count} rutas activas para esta fecha. '
                             f'Use force_regenerate=true para regenerarlas.'
                         ),
-                        'routes_generated': 0,
-                        'total_orders_assigned': 0,
-                        'total_orders_unassigned': len(self.orders),
-                        'computation_time_seconds': (datetime.now() - start_time).total_seconds(),
-                        'routes': [],
-                        'unassigned_orders': [_serialize_order_for_json(order) for order in self.orders],
-                        'metrics': {},
-                        'errors': []
-                    }
+                        start_time=start_time
+                    )
             
-            # 2. Validar pedidos
-            if not self.orders:
-                logger.info("No hay pedidos para rutear")
-                return {
-                    'status': 'no_orders',
-                    'message': 'No hay pedidos para rutear',
-                    'routes_generated': 0,
-                    'total_orders_assigned': 0,
-                    'total_orders_unassigned': 0,
-                    'computation_time_seconds': (datetime.now() - start_time).total_seconds(),
-                    'routes': [],
-                    'unassigned_orders': [],
-                    'metrics': {},
-                    'errors': []
-                }
-            
-            # 3. Obtener vehículos disponibles
+            # PASO 6: Obtener vehículos disponibles
+            logger.info("🚛 Obteniendo vehículos disponibles...")
             vehicles = Session.query(Vehicle).filter(
                 Vehicle.home_distribution_center_id == self.distribution_center_id,
                 Vehicle.is_available == True
             ).all()
             
             if not vehicles:
-                logger.error(f"No hay vehículos disponibles en DC {self.distribution_center_id}")
-                return {
-                    'status': 'no_vehicles',
-                    'message': 'No hay vehículos disponibles para generar rutas',
-                    'routes_generated': 0,
-                    'total_orders_assigned': 0,
-                    'total_orders_unassigned': len(self.orders),
-                    'computation_time_seconds': (datetime.now() - start_time).total_seconds(),
-                    'routes': [],
-                    'unassigned_orders': [_serialize_order_for_json(order) for order in self.orders],
-                    'metrics': {},
-                    'errors': ['No hay vehículos disponibles']
-                }
+                logger.error(f"❌ No hay vehículos disponibles en DC {self.distribution_center_id}")
+                return self._build_error_response(
+                    status='no_vehicles',
+                    message='No hay vehículos disponibles para generar rutas',
+                    errors=['No available vehicles in distribution center'],
+                    start_time=start_time
+                )
             
+            logger.info(f"✅ Encontrados {len(vehicles)} vehículos disponibles")
+            
+            # PASO 7: Transformar órdenes al formato esperado por RouteOptimizerService
+            logger.info("🔄 Transformando datos de órdenes...")
+            transformed_orders = self._transform_orders_for_optimizer(valid_orders)
+            
+            # PASO 8: Ejecutar optimización de rutas
             logger.info(
-                f"Iniciando generación de rutas: {len(self.orders)} pedidos, "
+                f"🧮 Iniciando optimización de rutas: {len(transformed_orders)} órdenes, "
                 f"{len(vehicles)} vehículos, estrategia: {self.optimization_strategy}"
             )
             
-            # 4. Ejecutar optimización
-            result = RouteOptimizerService.optimize_routes(
-                orders=self.orders,
+            optimization_result = RouteOptimizerService.optimize_routes(
+                orders=transformed_orders,
                 distribution_center_id=self.distribution_center_id,
                 planned_date=self.planned_date,
                 optimization_strategy=self.optimization_strategy,
                 max_execution_time=30
             )
             
-            if result['status'] == 'failed':
-                logger.error(f"Optimización de rutas falló: {result['errors']}")
-                return {
-                    'status': 'failed',
-                    'message': 'Error al optimizar rutas',
-                    'routes_generated': 0,
-                    'total_orders_assigned': 0,
-                    'total_orders_unassigned': len(self.orders),
-                    'computation_time_seconds': result['computation_time_seconds'],
-                    'routes': [],
-                    'unassigned_orders': [_serialize_order_for_json(order) for order in self.orders],
-                    'metrics': {},
-                    'errors': result['errors']
-                }
+            if optimization_result['status'] == 'failed':
+                logger.error(f"❌ Optimización de rutas falló: {optimization_result['errors']}")
+                return self._build_error_response(
+                    status='optimization_failed',
+                    message='La optimización de rutas falló',
+                    errors=optimization_result['errors'],
+                    start_time=start_time
+                )
             
-            # 5. Agregar información de creación a las rutas
-            for route in result['routes']:
+            # PASO 9: Agregar metadata de creación a las rutas
+            for route in optimization_result['routes']:
                 route.created_by = self.created_by
             
-            # 6. Commit (RouteOptimizerService ya creó los objetos)
+            # PASO 10: Commit (RouteOptimizerService ya creó los objetos)
             Session.commit()
+            logger.info("✅ Rutas guardadas en base de datos")
             
-            # 7. Serializar rutas para respuesta
-            routes_data = [
-                route.to_dict(include_stops=True, include_vehicle=True, include_assignments=True)
-                for route in result['routes']
-            ]
+            # PASO 11: Actualizar estado de órdenes en sales-service
+            if optimization_result['routes']:
+                logger.info("📡 Actualizando estado de órdenes en sales-service...")
+                self._update_orders_in_sales_service(optimization_result['routes'])
             
+            # PASO 12: Construir response resumido
             computation_time = (datetime.now() - start_time).total_seconds()
             
             logger.info(
-                f"Generación completada: {len(result['routes'])} rutas, "
-                f"{result['metrics'].get('total_orders_assigned', 0)} pedidos asignados, "
+                f"✅ Generación completada: {len(optimization_result['routes'])} rutas, "
+                f"{optimization_result['metrics'].get('total_orders_assigned', 0)} órdenes asignadas, "
                 f"tiempo: {computation_time:.2f}s"
             )
             
-            return {
-                'status': result['status'],  # 'success' o 'partial'
-                'message': self._get_success_message(result),
-                'routes_generated': len(result['routes']),
-                'total_orders_assigned': result['metrics'].get('total_orders_assigned', 0),
-                'total_orders_unassigned': len(result['unassigned_orders']),
-                'computation_time_seconds': computation_time,
-                'routes': routes_data,
-                'unassigned_orders': [_serialize_order_for_json(order) for order in result['unassigned_orders']],
-                'metrics': result['metrics'],
-                'errors': result['errors']
-            }
+            return self._build_success_response(
+                routes=optimization_result['routes'],
+                metrics=optimization_result['metrics'],
+                unassigned_orders=optimization_result['unassigned_orders'],
+                warnings=warnings,
+                errors=errors,
+                computation_time=computation_time
+            )
         
         except Exception as e:
             Session.rollback()
-            logger.exception(f"Error inesperado en generación de rutas: {e}")
-            return {
-                'status': 'failed',
-                'message': f'Error inesperado: {str(e)}',
-                'routes_generated': 0,
-                'total_orders_assigned': 0,
-                'total_orders_unassigned': len(self.orders),
-                'computation_time_seconds': (datetime.now() - start_time).total_seconds(),
-                'routes': [],
-                'unassigned_orders': [_serialize_order_for_json(order) for order in self.orders],
-                'metrics': {},
-                'errors': [str(e)]
-            }
+            logger.exception(f"❌ Error inesperado en generación de rutas: {e}")
+            return self._build_error_response(
+                status='failed',
+                message=f'Error inesperado: {str(e)}',
+                errors=[str(e)],
+                start_time=start_time
+            )
     
-    def _get_success_message(self, result: Dict) -> str:
-        """Genera mensaje de éxito descriptivo."""
-        routes_count = len(result['routes'])
-        assigned = result['metrics'].get('total_orders_assigned', 0)
-        unassigned = len(result['unassigned_orders'])
+    def _validate_orders(self, orders: List[Dict]) -> tuple:
+        """
+        Valida que las órdenes cumplan con los requisitos para ser ruteadas.
         
-        if result['status'] == 'success':
-            return (
-                f"Se generaron {routes_count} ruta(s) optimizada(s) con "
-                f"{assigned} pedido(s) asignado(s)"
-            )
-        else:  # partial
-            return (
-                f"Se generaron {routes_count} ruta(s) con {assigned} pedido(s) asignado(s). "
-                f"{unassigned} pedido(s) no pudieron ser asignados"
-            )
+        Validaciones:
+        - Estado debe ser 'confirmed'
+        - No debe estar ya ruteada (is_routed = false)
+        - Debe tener dirección de entrega
+        - Debe tener coordenadas o capacidad de geocoding
+        
+        Args:
+            orders: Lista de órdenes desde sales-service
+        
+        Returns:
+            Tupla (órdenes_válidas, errores_validación)
+        """
+        valid_orders = []
+        validation_errors = []
+        
+        for order in orders:
+            order_id = order.get('id')
+            order_number = order.get('order_number', f'Order-{order_id}')
+            
+            # Validar estado
+            if order.get('status') != 'confirmed':
+                validation_errors.append(
+                    f"Orden {order_number}: Estado '{order.get('status')}' no es 'confirmed'"
+                )
+                continue
+            
+            # Validar que no esté ya ruteada
+            if order.get('is_routed', False):
+                validation_errors.append(
+                    f"Orden {order_number}: Ya está asignada a una ruta"
+                )
+                continue
+            
+            # Validar dirección
+            delivery_address = order.get('delivery_address', '').strip()
+            if not delivery_address or len(delivery_address) < 10:
+                validation_errors.append(
+                    f"Orden {order_number}: Dirección de entrega inválida o incompleta"
+                )
+                continue
+            
+            # Agregar a órdenes válidas
+            valid_orders.append(order)
+        
+        return valid_orders, validation_errors
+    
+    def _transform_orders_for_optimizer(self, orders: List[Dict]) -> List[Dict]:
+        """
+        Transforma órdenes del formato de sales-service al formato esperado
+        por RouteOptimizerService.
+        
+        Args:
+            orders: Órdenes desde sales-service
+        
+        Returns:
+            Lista de órdenes en formato para RouteOptimizerService
+        """
+        transformed = []
+        
+        for order in orders:
+            # Calcular peso y volumen total desde items
+            total_weight_kg = 0.0
+            total_volume_m3 = 0.0
+            requires_cold_chain = False
+            
+            for item in order.get('items', []):
+                total_weight_kg += float(item.get('weight_kg', 0) * item.get('quantity', 1))
+                total_volume_m3 += float(item.get('volume_m3', 0) * item.get('quantity', 1))
+                
+                if item.get('requires_cold_chain', False):
+                    requires_cold_chain = True
+            
+            transformed_order = {
+                'id': order['id'],
+                'order_number': order['order_number'],
+                'customer_id': order['customer_id'],
+                'customer_name': order.get('customer_name') or order.get('customer', {}).get('razon_social', 'Desconocido'),
+                'delivery_address': order['delivery_address'],
+                'city': order.get('delivery_city', ''),
+                'department': order.get('delivery_department', ''),
+                'latitude': order.get('delivery_latitude'),
+                'longitude': order.get('delivery_longitude'),
+                'weight_kg': total_weight_kg if total_weight_kg > 0 else order.get('estimated_weight_kg', 10.0),
+                'volume_m3': total_volume_m3 if total_volume_m3 > 0 else order.get('estimated_volume_m3', 0.1),
+                'requires_cold_chain': requires_cold_chain,
+                'clinical_priority': order.get('clinical_priority', 3),
+                'time_window_start': order.get('delivery_time_window_start'),
+                'time_window_end': order.get('delivery_time_window_end'),
+                'service_time_minutes': 15  # Default
+            }
+            
+            transformed.append(transformed_order)
+        
+        return transformed
+    
+    def _update_orders_in_sales_service(self, routes: List[DeliveryRoute]):
+        """
+        Actualiza el estado de las órdenes asignadas en sales-service.
+        
+        Args:
+            routes: Lista de rutas generadas
+        """
+        updated_count = 0
+        failed_count = 0
+        
+        for route in routes:
+            # Obtener todas las asignaciones de la ruta
+            assignments = route.assignments.all()
+            
+            for assignment in assignments:
+                order_id = assignment.order_id
+                
+                try:
+                    # Actualizar estado a 'processing'
+                    success = self.sales_client.update_order_status(
+                        order_id=order_id,
+                        new_status='processing',
+                        notes=f'Asignado a ruta {route.route_code}'
+                    )
+                    
+                    if success:
+                        # Marcar como ruteado
+                        self.sales_client._make_request(
+                            'PUT',
+                            f'/orders/{order_id}',
+                            json_data={
+                                'is_routed': True,
+                                'route_id': route.id,
+                                'routed_at': datetime.utcnow().isoformat()
+                            }
+                        )
+                        updated_count += 1
+                    else:
+                        failed_count += 1
+                        logger.warning(f"⚠️ No se pudo actualizar orden {order_id}")
+                
+                except Exception as e:
+                    failed_count += 1
+                    logger.error(f"❌ Error actualizando orden {order_id}: {e}")
+        
+        logger.info(
+            f"📡 Órdenes actualizadas en sales-service: {updated_count} exitosas, "
+            f"{failed_count} fallidas"
+        )
+    
+    def _build_success_response(
+        self,
+        routes: List[DeliveryRoute],
+        metrics: Dict,
+        unassigned_orders: List[Dict],
+        warnings: List[str],
+        errors: List[str],
+        computation_time: float
+    ) -> Dict:
+        """
+        Construye response resumido de éxito.
+        """
+        status = 'success' if not unassigned_orders else 'partial'
+        
+        # Calcular totales
+        total_distance_km = sum(float(r.total_distance_km or 0) for r in routes)
+        total_duration_minutes = sum(r.estimated_duration_minutes or 0 for r in routes)
+        avg_optimization_score = (
+            sum(float(r.optimization_score or 0) for r in routes) / len(routes)
+            if routes else 0
+        )
+        
+        return {
+            'status': status,
+            'summary': {
+                'routes_generated': len(routes),
+                'orders_assigned': metrics.get('total_orders_assigned', 0),
+                'orders_unassigned': len(unassigned_orders),
+                'total_distance_km': round(total_distance_km, 2),
+                'estimated_duration_hours': round(total_duration_minutes / 60, 1),
+                'optimization_score': round(avg_optimization_score, 1)
+            },
+            'routes': [
+                {
+                    'id': r.id,
+                    'route_code': r.route_code,
+                    'vehicle': {
+                        'id': r.vehicle.id,
+                        'plate': r.vehicle.plate,
+                        'type': r.vehicle.vehicle_type
+                    },
+                    'stops_count': r.total_stops,
+                    'orders_count': r.total_orders,
+                    'distance_km': float(r.total_distance_km or 0),
+                    'duration_minutes': r.estimated_duration_minutes,
+                    'status': r.status
+                }
+                for r in routes
+            ],
+            'warnings': warnings,
+            'errors': errors,
+            'computation_time_seconds': round(computation_time, 2)
+        }
+    
+    def _build_error_response(
+        self,
+        status: str,
+        message: str,
+        errors: Optional[List[str]] = None,
+        start_time: Optional[datetime] = None
+    ) -> Dict:
+        """
+        Construye response de error estandarizado.
+        """
+        computation_time = (
+            (datetime.now() - start_time).total_seconds()
+            if start_time else 0
+        )
+        
+        return {
+            'status': status,
+            'summary': {
+                'routes_generated': 0,
+                'orders_assigned': 0,
+                'orders_unassigned': len(self.order_ids),
+                'total_distance_km': 0.0,
+                'estimated_duration_hours': 0.0,
+                'optimization_score': 0.0
+            },
+            'routes': [],
+            'warnings': [],
+            'errors': errors or [message],
+            'computation_time_seconds': round(computation_time, 2),
+            'message': message
+        }
+
+
+# =============================================================================
+# COMANDOS AUXILIARES
+# =============================================================================
 
 
 class CancelRoute:

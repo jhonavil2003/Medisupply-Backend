@@ -42,7 +42,9 @@ class UpdateOrder:
     """
     
     # Valid order statuses that can be updated
-    EDITABLE_STATUSES = ['pending']
+    # 'pending' = órdenes en creación
+    # 'confirmed' = órdenes confirmadas que pueden pasar a processing/in_transit/delivered
+    EDITABLE_STATUSES = ['pending', 'confirmed', 'processing', 'in_transit']
     
     # Immutable fields that cannot be changed
     IMMUTABLE_FIELDS = [
@@ -114,8 +116,9 @@ class UpdateOrder:
             if items_updated:
                 self._recalculate_totals(order)
             
-            # 8. Auto-confirm order: Change status from PENDING to CONFIRMED after update
-            if order.status == 'pending':
+            # 8. Auto-confirm order ONLY if it's still pending and status wasn't explicitly set
+            # This maintains backward compatibility while allowing explicit status updates
+            if order.status == 'pending' and 'status' not in self.order_data:
                 order.status = 'confirmed'
             
             # 9. Save changes to database
@@ -164,7 +167,7 @@ class UpdateOrder:
             status = self.order_data['status']
             if not isinstance(status, str):
                 raise ValidationError("Field 'status' must be a string")
-            if status and status not in ['pending', 'confirmed', 'cancelled', 'delivered', 'in_transit']:
+            if status and status not in ['pending', 'confirmed', 'processing', 'in_transit', 'delivered', 'cancelled']:
                 raise ValidationError(f"Invalid status value: '{status}'")
         
         # Validate numeric fields if present
@@ -248,9 +251,11 @@ class UpdateOrder:
         """
         Validate that the status transition is allowed.
         
-        Valid transitions from 'pending':
-        - pending → confirmed
-        - pending → pending (no change)
+        Valid transitions:
+        - pending → confirmed | cancelled
+        - confirmed → processing | cancelled
+        - processing → in_transit | cancelled
+        - in_transit → delivered | cancelled
         
         Args:
             current_status: Current order status
@@ -260,7 +265,10 @@ class UpdateOrder:
             ApiError: If transition is not allowed
         """
         valid_transitions = {
-            'pending': ['confirmed', 'pending']
+            'pending': ['confirmed', 'cancelled', 'pending'],
+            'confirmed': ['processing', 'cancelled', 'confirmed'],
+            'processing': ['in_transit', 'cancelled', 'processing'],
+            'in_transit': ['delivered', 'cancelled', 'in_transit']
         }
         
         allowed = valid_transitions.get(current_status, [])

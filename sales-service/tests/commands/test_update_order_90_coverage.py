@@ -479,7 +479,7 @@ class TestUpdateOrder90Coverage:
         assert "exceed 100" in str(exc_info.value).lower() or "between 0 and 100" in str(exc_info.value).lower()
     
     def test_update_order_status_confirmed_to_pending(self, db, sample_order):
-        """Test transición inválida de confirmed a pending (línea 288, 291, 296-297)."""
+        """Test transición inválida de confirmed a pending - debe fallar por reglas de negocio."""
         # Cambiar el estado a confirmed primero
         sample_order.status = 'confirmed'
         db.session.commit()
@@ -490,11 +490,12 @@ class TestUpdateOrder90Coverage:
         
         command = UpdateOrder(sample_order.id, update_data)
         
-        # Esperamos un ApiError porque solo se pueden editar órdenes pendientes
+        # Esperamos un ApiError porque confirmed no puede volver a pending
         with pytest.raises(ApiError) as exc_info:
             command.execute()
         
-        assert "pendiente" in str(exc_info.value).lower()
+        # El error debe mencionar que la transición es inválida
+        assert "transition" in str(exc_info.value).lower() or "invalid" in str(exc_info.value).lower()
     
     def test_update_order_with_tax_and_discount_calculations(self, db, sample_order):
         """Test para cubrir todas las líneas del recálculo (404-408)."""

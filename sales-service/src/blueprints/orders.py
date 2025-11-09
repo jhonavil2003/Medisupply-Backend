@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from src.commands.create_order import CreateOrder
 from src.commands.get_orders import GetOrders
 from src.commands.get_order_by_id import GetOrderById
+from src.commands.get_orders_batch import GetOrdersBatch
 from src.commands.update_order import UpdateOrder
 from src.commands.delete_order import DeleteOrder
 from src.errors.errors import NotFoundError, ApiError, ValidationError, ForbiddenError, DatabaseError
@@ -27,12 +28,18 @@ def create_order():
             - tax_percentage (float, opcional): Porcentaje de impuestos (default: 19.0)
         payment_terms (str, opcional): Términos de pago (default: 'contado')
         payment_method (str, opcional): Método de pago
-        delivery_address (str, opcional): Dirección de entrega
-        delivery_city (str, opcional): Ciudad de entrega
-        delivery_department (str, opcional): Departamento de entrega
+        delivery_address (str, opcional): Dirección de entrega (default: customer.address)
+        delivery_neighborhood (str, opcional): Barrio de entrega (default: customer.neighborhood)
+        delivery_city (str, opcional): Ciudad de entrega (default: customer.city)
+        delivery_department (str, opcional): Departamento de entrega (default: customer.department)
+        delivery_latitude (float, opcional): Latitud GPS de entrega (default: customer.latitude)
+        delivery_longitude (float, opcional): Longitud GPS de entrega (default: customer.longitude)
         delivery_date (str, opcional): Fecha estimada de entrega (formato: YYYY-MM-DD o YYYY-MM-DD HH:MM:SS)
         preferred_distribution_center (str, opcional): Código del centro de distribución preferido
         notes (str, opcional): Notas de la orden
+    
+    Nota: Los datos del cliente (razón social, documento, teléfono, email) se guardan automáticamente
+          como snapshot al momento de crear la orden.
     
     Retorna:
         201: Orden creada exitosamente
@@ -81,7 +88,7 @@ def create_order():
 @orders_bp.route('', methods=['GET'])
 def get_orders():
     """
-    Obtiene la lista de órdenes con filtrado opcional.
+    Obtiene la lista de órdenes con filtrado opcional y paginación.
     
     Parámetros de Query:
         customer_id (int, opcional): Filtrar por ID del cliente
@@ -91,13 +98,17 @@ def get_orders():
         delivery_date_to (str, opcional): Fecha de entrega hasta (formato: YYYY-MM-DD)
         order_date_from (str, opcional): Fecha de orden desde (formato: YYYY-MM-DD)
         order_date_to (str, opcional): Fecha de orden hasta (formato: YYYY-MM-DD)
+        page (int, opcional): Número de página (default: 1)
+        per_page (int, opcional): Resultados por página (default: 20, max: 100)
+        include_details (bool, opcional): Incluir items completos (default: false)
     
     Retorna:
-        200: Lista de órdenes
+        200: Lista de órdenes paginada con información resumida
         500: Error interno del servidor
     
     Ejemplo:
-        GET /orders?customer_id=1&status=pending&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31
+        GET /orders?seller_id=SELLER-001&page=1&per_page=20
+        GET /orders?customer_id=1&status=pending&include_details=true
     """
     customer_id = request.args.get('customer_id', type=int)
     seller_id = request.args.get('seller_id')
@@ -106,6 +117,9 @@ def get_orders():
     delivery_date_to = request.args.get('delivery_date_to')
     order_date_from = request.args.get('order_date_from')
     order_date_to = request.args.get('order_date_to')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    include_details = request.args.get('include_details', 'false').lower() == 'true'
     
     command = GetOrders(
         customer_id=customer_id,
@@ -114,15 +128,15 @@ def get_orders():
         delivery_date_from=delivery_date_from,
         delivery_date_to=delivery_date_to,
         order_date_from=order_date_from,
-        order_date_to=order_date_to
+        order_date_to=order_date_to,
+        page=page,
+        per_page=per_page,
+        include_details=include_details
     )
     
-    orders = command.execute()
+    result = command.execute()
     
-    return jsonify({
-        'orders': orders,
-        'total': len(orders)
-    }), 200
+    return jsonify(result), 200
 
 
 @orders_bp.route('/<int:order_id>', methods=['GET'])
@@ -144,6 +158,127 @@ def get_order(order_id):
     order = command.execute()
     
     return jsonify(order), 200
+
+
+@orders_bp.route('/batch', methods=['POST'])
+def get_orders_batch():
+    """
+    Obtiene múltiples órdenes por sus IDs en una sola operación.
+    
+    Este endpoint optimiza la comunicación entre microservicios al permitir
+    recuperar múltiples órdenes con una sola llamada HTTP, en lugar de
+    hacer N llamadas individuales.
+    
+    Cuerpo de la Petición:
+        order_ids (list[int], requerido): Lista de IDs de órdenes a recuperar
+    
+    Retorna:
+        200: Órdenes recuperadas exitosamente
+        400: Error de validación (body inválido, order_ids no es lista, etc.)
+        500: Error interno del servidor
+    
+    Ejemplo de Petición:
+        POST /orders/batch
+        {
+            "order_ids": [101, 102, 103, 104]
+        }
+    
+    Ejemplo de Respuesta:
+        {
+            "orders": [
+                {
+                    "id": 101,
+                    "order_number": "ORD-2025-001",
+                    "customer": {
+                        "id": 10,
+                        "name": "Hospital San Ignacio",
+                        "document": "900123456-1",
+                        ...
+                    },
+                    "items": [
+                        {
+                            "product_sku": "MED-001",
+                            "product_name": "Paracetamol 500mg",
+                            "quantity": 100,
+                            ...
+                        }
+                    ],
+                    "delivery_address": "Calle 100 # 15-20",
+                    "delivery_city": "Bogotá",
+                    "delivery_department": "Cundinamarca",
+                    "delivery_latitude": 4.6825,
+                    "delivery_longitude": -74.0543,
+                    "clinical_priority": 1,
+                    "requires_cold_chain": true,
+                    "estimated_weight_kg": 12.5,
+                    "estimated_volume_m3": 0.25,
+                    "status": "confirmed",
+                    ...
+                },
+                ...
+            ],
+            "total": 4,
+            "not_found": [],
+            "requested": 4
+        }
+    
+    Notas:
+        - Las órdenes se retornan con detalles completos (include_items=True, include_customer=True)
+        - Si algún ID no existe, se incluye en el array 'not_found'
+        - Se eliminan IDs duplicados automáticamente
+        - El orden de las órdenes retornadas puede no coincidir con el orden de los IDs solicitados
+    """
+    try:
+        # Validar que el request tiene JSON
+        if not request.is_json:
+            return jsonify({
+                'error': 'Content-Type must be application/json',
+                'status_code': 400
+            }), 400
+        
+        data = request.get_json()
+        
+        # Validar que el body no está vacío
+        if not data:
+            return jsonify({
+                'error': 'Request body is required',
+                'status_code': 400
+            }), 400
+        
+        # Validar que order_ids existe y es una lista
+        if 'order_ids' not in data:
+            return jsonify({
+                'error': 'order_ids is required in request body',
+                'status_code': 400
+            }), 400
+        
+        order_ids = data['order_ids']
+        
+        if not isinstance(order_ids, list):
+            return jsonify({
+                'error': 'order_ids must be an array of integers',
+                'status_code': 400
+            }), 400
+        
+        # Validar que todos los elementos son enteros
+        if not all(isinstance(order_id, int) for order_id in order_ids):
+            return jsonify({
+                'error': 'All order_ids must be integers',
+                'status_code': 400
+            }), 400
+        
+        # Ejecutar comando
+        command = GetOrdersBatch(order_ids)
+        result = command.execute()
+        
+        return jsonify(result), 200
+    
+    except Exception as e:
+        # Error inesperado
+        return jsonify({
+            'error': f'Internal server error: {str(e)}',
+            'status_code': 500
+        }), 500
 
 
 @orders_bp.route('/<int:order_id>', methods=['PATCH'])

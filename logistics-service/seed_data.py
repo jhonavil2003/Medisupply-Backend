@@ -12,6 +12,7 @@ from src.models.inventory import Inventory
 from src.models.warehouse_location import WarehouseLocation
 from src.models.product_batch import ProductBatch
 from src.models.vehicle import Vehicle
+from shared_seed_data import DISTRIBUTION_CENTERS_DATA, get_all_product_skus
 
 
 def seed_data():
@@ -20,67 +21,42 @@ def seed_data():
     with app.app_context():
         print("🌱 Iniciando seed de datos...")
         
-        print("�️  Clearing existing data...")
+        print("🗑️  Clearing existing data...")
         db.drop_all()
         db.create_all()
         
-        print("�📦 Creando centros de distribución...")
-        dc_bogota = DistributionCenter(
-            code='DC-BOG-001',
-            name='Centro de Distribución Bogotá',
-            address='Calle 100 # 15-20',
-            city='Bogotá',
-            state='Cundinamarca',
-            country='Colombia',
-            postal_code='110111',
-            phone='+57 1 234 5678',
-            email='bogota@medisupply.com',
-            manager_name='Carlos Rodríguez',
-            capacity_m3=Decimal('5000.00'),
-            is_active=True,
-            supports_cold_chain=True,
-            latitude=Decimal('4.60971'),
-            longitude=Decimal('-74.08175')
-        )
+        print("📦 Creando centros de distribución...")
+        distribution_centers = []
+        for dc_data in DISTRIBUTION_CENTERS_DATA:
+            dc = DistributionCenter(
+                code=dc_data['code'],
+                name=dc_data['name'],
+                address=dc_data['address'],
+                city=dc_data['city'],
+                state=dc_data['state'],
+                country=dc_data['country'],
+                postal_code=dc_data['postal_code'],
+                phone=dc_data['phone'],
+                email=dc_data['email'],
+                manager_name=dc_data['manager_name'],
+                capacity_m3=dc_data['capacity_m3'],
+                latitude=dc_data.get('latitude'),
+                longitude=dc_data.get('longitude'),
+                is_active=dc_data['is_active'],
+                supports_cold_chain=dc_data['supports_cold_chain']
+            )
+            distribution_centers.append(dc)
+            db.session.add(dc)
         
-        dc_medellin = DistributionCenter(
-            code='DC-MED-001',
-            name='Centro de Distribución Medellín',
-            address='Carrera 50 # 30-15',
-            city='Medellín',
-            state='Antioquia',
-            country='Colombia',
-            postal_code='050001',
-            phone='+57 4 567 8901',
-            email='medellin@medisupply.com',
-            manager_name='Ana María López',
-            capacity_m3=Decimal('3000.00'),
-            is_active=True,
-            supports_cold_chain=True,
-            latitude=Decimal('6.25184'),
-            longitude=Decimal('-75.56359')
-        )
-        
-        dc_cali = DistributionCenter(
-            code='DC-CAL-001',
-            name='Centro de Distribución Cali',
-            address='Avenida 6N # 25-40',
-            city='Cali',
-            state='Valle del Cauca',
-            country='Colombia',
-            postal_code='760001',
-            phone='+57 2 345 6789',
-            email='cali@medisupply.com',
-            manager_name='Jorge Martínez',
-            capacity_m3=Decimal('2500.00'),
-            is_active=True,
-            supports_cold_chain=False,
-            latitude=Decimal('3.43722'),
-            longitude=Decimal('-76.5225')
-        )
-        
-        db.session.add_all([dc_bogota, dc_medellin, dc_cali])
         db.session.commit()
+        print(f"✅ Creados {len(distribution_centers)} centros de distribución")
+        
+        # Shortcuts to distribution centers
+        dc_bogota = distribution_centers[0]   # CEDIS-BOG
+        dc_medellin = distribution_centers[1] # CEDIS-MED
+        dc_cali = distribution_centers[2]     # CEDIS-CALI
+        
+        print("📊 Creando inventarios...")
         print(f"✅ Creados {DistributionCenter.query.count()} centros de distribución")
         
         print("📊 Creando inventarios...")

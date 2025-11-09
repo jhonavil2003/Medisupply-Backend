@@ -120,6 +120,13 @@ class CreateOrder:
         order = Order(
             order_number=self._generate_order_number(),
             customer_id=customer.id,
+            # Customer snapshot - datos del cliente al momento de crear la orden
+            customer_business_name=customer.business_name,
+            customer_document_number=customer.document_number,
+            customer_contact_name=customer.contact_name,
+            customer_contact_phone=customer.contact_phone,
+            customer_contact_email=customer.contact_email,
+            # Seller information
             seller_id=self.data['seller_id'],
             seller_name=self.data.get('seller_name'),
             order_date=datetime.utcnow(),
@@ -130,9 +137,13 @@ class CreateOrder:
             total_amount=totals['total_amount'],
             payment_terms=self.data.get('payment_terms', 'contado'),
             payment_method=self.data.get('payment_method'),
+            # Delivery information - usa datos del request o fallback a datos del cliente
             delivery_address=self.data.get('delivery_address', customer.address),
+            delivery_neighborhood=self.data.get('delivery_neighborhood', customer.neighborhood),
             delivery_city=self.data.get('delivery_city', customer.city),
             delivery_department=self.data.get('delivery_department', customer.department),
+            delivery_latitude=self.data.get('delivery_latitude', customer.latitude),
+            delivery_longitude=self.data.get('delivery_longitude', customer.longitude),
             delivery_date=self._parse_delivery_date(self.data.get('delivery_date')),
             preferred_distribution_center=self.data.get('preferred_distribution_center'),
             notes=self.data.get('notes')

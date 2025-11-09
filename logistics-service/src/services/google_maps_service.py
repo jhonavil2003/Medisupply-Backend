@@ -23,14 +23,18 @@ class GoogleMapsService:
     def __init__(self):
         """Inicializa el cliente de Google Maps"""
         self.api_key = os.getenv('GOOGLE_MAPS_API_KEY')
+        
+        # Modo desarrollo: Si no hay API key, permitir ejecución con fallback
         if not self.api_key:
-            raise ValueError("GOOGLE_MAPS_API_KEY no está configurado en las variables de entorno")
-        
-        self.client = googlemaps.Client(key=self.api_key)
-        self.geocoding_enabled = os.getenv('GOOGLE_MAPS_GEOCODING_ENABLED', 'true').lower() == 'true'
-        self.distance_matrix_enabled = os.getenv('GOOGLE_MAPS_DISTANCE_MATRIX_ENABLED', 'true').lower() == 'true'
-        
-        logger.info(f"✅ Google Maps Service inicializado (Geocoding: {self.geocoding_enabled}, Distance Matrix: {self.distance_matrix_enabled})")
+            logger.warning("⚠️  GOOGLE_MAPS_API_KEY no configurado - Modo desarrollo con distancias euclidianas")
+            self.client = None
+            self.geocoding_enabled = False
+            self.distance_matrix_enabled = False
+        else:
+            self.client = googlemaps.Client(key=self.api_key)
+            self.geocoding_enabled = os.getenv('GOOGLE_MAPS_GEOCODING_ENABLED', 'true').lower() == 'true'
+            self.distance_matrix_enabled = os.getenv('GOOGLE_MAPS_DISTANCE_MATRIX_ENABLED', 'true').lower() == 'true'
+            logger.info(f"✅ Google Maps Service inicializado (Geocoding: {self.geocoding_enabled}, Distance Matrix: {self.distance_matrix_enabled})")
     
     def geocode_address(
         self, 
@@ -62,8 +66,8 @@ class GoogleMapsService:
             ValueError: Si no se puede geocodificar la dirección
         """
         
-        if not self.geocoding_enabled:
-            raise ValueError("Geocoding API está deshabilitado")
+        if not self.geocoding_enabled or not self.client:
+            raise ValueError("Geocoding API está deshabilitado o no configurado")
         
         # Generar hash de la dirección para búsqueda en caché
         address_hash = GeocodedAddress.generate_address_hash(address, city, department)
@@ -227,8 +231,8 @@ class GoogleMapsService:
             - status: Estado de la respuesta
         """
         
-        if not self.distance_matrix_enabled:
-            raise ValueError("Distance Matrix API está deshabilitado")
+        if not self.distance_matrix_enabled or not self.client:
+            raise ValueError("Distance Matrix API está deshabilitado o no configurado")
         
         logger.info(f"🗺️ Calculando Distance Matrix: {len(origins)} orígenes × {len(destinations)} destinos")
         

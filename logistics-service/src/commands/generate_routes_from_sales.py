@@ -9,7 +9,7 @@ from typing import Optional, Dict, List
 from datetime import date, datetime
 import logging
 
-from src.commands.generate_routes import GenerateRoutes
+from src.commands.generate_routes import GenerateRoutesCommand
 from src.services.sales_service_client import get_sales_service_client
 from src.session import Session
 
@@ -152,7 +152,7 @@ class GenerateRoutesFromSalesService:
             # 4. Ejecutar generación de rutas
             logger.info(f"Generando rutas para {len(valid_orders)} pedidos válidos")
             
-            generate_command = GenerateRoutes(
+            generate_command = GenerateRoutesCommand(
                 distribution_center_id=self.distribution_center_id,
                 planned_date=self.planned_date,
                 orders=valid_orders,
