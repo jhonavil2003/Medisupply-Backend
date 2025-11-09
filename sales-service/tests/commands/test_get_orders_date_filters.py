@@ -24,8 +24,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(delivery_date_from=date_from)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_delivery_date_from_excludes_earlier(self, db, sample_order):
         """Test que delivery_date_from excluye órdenes anteriores."""
@@ -41,7 +41,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # La orden con fecha pasada no debe estar
-        assert not any(o['id'] == sample_order.id for o in result)
+        assert not any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_delivery_date_to(self, db, sample_order):
         """Test filtro por delivery_date_to."""
@@ -56,8 +56,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(delivery_date_to=date_to)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_delivery_date_to_excludes_later(self, db, sample_order):
         """Test que delivery_date_to excluye órdenes posteriores."""
@@ -73,7 +73,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # La orden con fecha futura no debe estar
-        assert not any(o['id'] == sample_order.id for o in result)
+        assert not any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_delivery_date_range(self, db, sample_order):
         """Test filtro por rango de delivery_date (from + to)."""
@@ -89,8 +89,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(delivery_date_from=date_from, delivery_date_to=date_to)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_order_date_from(self, db, sample_order):
         """Test filtro por order_date_from."""
@@ -100,8 +100,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(order_date_from=date_from)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_order_date_from_excludes_earlier(self, db, sample_order):
         """Test que order_date_from excluye órdenes anteriores."""
@@ -112,7 +112,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # La orden de hoy no debe estar
-        assert not any(o['id'] == sample_order.id for o in result)
+        assert not any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_order_date_to(self, db, sample_order):
         """Test filtro por order_date_to."""
@@ -122,8 +122,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(order_date_to=date_to)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_order_date_to_excludes_later(self, db, sample_order):
         """Test que order_date_to excluye órdenes posteriores."""
@@ -134,7 +134,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # La orden de hoy no debe estar
-        assert not any(o['id'] == sample_order.id for o in result)
+        assert not any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_filter_by_order_date_range(self, db, sample_order):
         """Test filtro por rango de order_date (from + to)."""
@@ -144,8 +144,8 @@ class TestGetOrdersDateFilters:
         command = GetOrders(order_date_from=date_from, order_date_to=date_to)
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_invalid_delivery_date_from_format(self, db, sample_order):
         """Test con formato de fecha inválido en delivery_date_from."""
@@ -154,7 +154,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # Debe retornar todas las órdenes sin filtrar
-        assert len(result) >= 1
+        assert len(result['orders']) >= 1
     
     def test_get_orders_invalid_delivery_date_to_format(self, db, sample_order):
         """Test con formato de fecha inválido en delivery_date_to."""
@@ -163,7 +163,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # Debe retornar todas las órdenes sin filtrar
-        assert len(result) >= 1
+        assert len(result['orders']) >= 1
     
     def test_get_orders_invalid_order_date_from_format(self, db, sample_order):
         """Test con formato de fecha inválido en order_date_from."""
@@ -172,7 +172,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # Debe retornar todas las órdenes sin filtrar
-        assert len(result) >= 1
+        assert len(result['orders']) >= 1
     
     def test_get_orders_invalid_order_date_to_format(self, db, sample_order):
         """Test con formato de fecha inválido en order_date_to."""
@@ -181,7 +181,7 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # Debe retornar todas las órdenes sin filtrar
-        assert len(result) >= 1
+        assert len(result['orders']) >= 1
     
     def test_get_orders_combined_all_date_filters(self, db, sample_order):
         """Test combinando todos los filtros de fecha."""
@@ -204,8 +204,8 @@ class TestGetOrdersDateFilters:
         )
         result = command.execute()
         
-        assert len(result) >= 1
-        assert any(o['id'] == sample_order.id for o in result)
+        assert len(result['orders']) >= 1
+        assert any(o['id'] == sample_order.id for o in result['orders'])
     
     def test_get_orders_null_delivery_date_with_filter(self, db, sample_order):
         """Test órden con delivery_date NULL no aparece en filtros de delivery."""
@@ -220,4 +220,4 @@ class TestGetOrdersDateFilters:
         result = command.execute()
         
         # La orden con delivery_date NULL no debe aparecer
-        assert not any(o['id'] == sample_order.id for o in result)
+        assert not any(o['id'] == sample_order.id for o in result['orders'])

@@ -88,7 +88,7 @@ def create_order():
 @orders_bp.route('', methods=['GET'])
 def get_orders():
     """
-    Obtiene la lista de órdenes con filtrado opcional.
+    Obtiene la lista de órdenes con filtrado opcional y paginación.
     
     Parámetros de Query:
         customer_id (int, opcional): Filtrar por ID del cliente
@@ -98,13 +98,17 @@ def get_orders():
         delivery_date_to (str, opcional): Fecha de entrega hasta (formato: YYYY-MM-DD)
         order_date_from (str, opcional): Fecha de orden desde (formato: YYYY-MM-DD)
         order_date_to (str, opcional): Fecha de orden hasta (formato: YYYY-MM-DD)
+        page (int, opcional): Número de página (default: 1)
+        per_page (int, opcional): Resultados por página (default: 20, max: 100)
+        include_details (bool, opcional): Incluir items completos (default: false)
     
     Retorna:
-        200: Lista de órdenes
+        200: Lista de órdenes paginada con información resumida
         500: Error interno del servidor
     
     Ejemplo:
-        GET /orders?customer_id=1&status=pending&delivery_date_from=2025-10-01&delivery_date_to=2025-10-31
+        GET /orders?seller_id=SELLER-001&page=1&per_page=20
+        GET /orders?customer_id=1&status=pending&include_details=true
     """
     customer_id = request.args.get('customer_id', type=int)
     seller_id = request.args.get('seller_id')
@@ -113,6 +117,9 @@ def get_orders():
     delivery_date_to = request.args.get('delivery_date_to')
     order_date_from = request.args.get('order_date_from')
     order_date_to = request.args.get('order_date_to')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    include_details = request.args.get('include_details', 'false').lower() == 'true'
     
     command = GetOrders(
         customer_id=customer_id,
@@ -121,15 +128,15 @@ def get_orders():
         delivery_date_from=delivery_date_from,
         delivery_date_to=delivery_date_to,
         order_date_from=order_date_from,
-        order_date_to=order_date_to
+        order_date_to=order_date_to,
+        page=page,
+        per_page=per_page,
+        include_details=include_details
     )
     
-    orders = command.execute()
+    result = command.execute()
     
-    return jsonify({
-        'orders': orders,
-        'total': len(orders)
-    }), 200
+    return jsonify(result), 200
 
 
 @orders_bp.route('/<int:order_id>', methods=['GET'])
