@@ -38,7 +38,7 @@ def create_goal():
     - 500: Error del servidor
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
             return jsonify({'error': 'No se proporcionó ningún dato'}), 400
@@ -166,7 +166,7 @@ def update_goal(goal_id):
     PUT /salesperson-goals/1
     """
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
         
         if not data:
             return jsonify({'error': 'No se proporcionó ningún dato'}), 400

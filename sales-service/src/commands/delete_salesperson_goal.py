@@ -1,6 +1,6 @@
 from src.entities.salesperson_goal import SalespersonGoal
 from src.session import db
-from src.errors.errors import ValidationError
+from src.errors.errors import NotFoundError
 
 
 class DeleteSalespersonGoal:
@@ -17,12 +17,12 @@ class DeleteSalespersonGoal:
             dict: Deleted goal data
             
         Raises:
-            ValidationError: If goal not found
+            NotFoundError: If goal not found
         """
         goal = SalespersonGoal.query.get(self.goal_id)
         
         if not goal:
-            raise ValidationError(f"Objetivo con ID {self.goal_id} no encontrado")
+            raise NotFoundError(f"Objetivo con ID {self.goal_id} no encontrado")
         
         # Save goal data before deletion
         goal_data = goal.to_dict(include_salesperson=True, include_producto=True)

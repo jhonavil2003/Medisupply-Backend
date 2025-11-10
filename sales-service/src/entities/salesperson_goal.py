@@ -2,6 +2,10 @@ from src.session import db
 from datetime import datetime
 from typing import Optional
 from enum import Enum
+try:
+    from src.services.integration_service import IntegrationService
+except Exception:
+    IntegrationService = None
 
 class GoalType(str, Enum):
     """Tipo de objetivo de venta"""
@@ -152,8 +156,13 @@ class SalespersonGoal(db.Model):
         if include_producto and self.id_producto:
             # Obtener información del producto desde catalog-service
             try:
-                from src.services.integration_service import IntegrationService
-                integration_service = IntegrationService()
+                # Preferir la clase importada a nivel de módulo (facilita mocking en tests)
+                if IntegrationService is not None:
+                    integration_service = IntegrationService()
+                else:
+                    from src.services.integration_service import IntegrationService as _IntegrationService
+                    integration_service = _IntegrationService()
+
                 producto = integration_service.get_product_by_sku(self.id_producto)
                 result['producto'] = {
                     'sku': producto.get('sku'),

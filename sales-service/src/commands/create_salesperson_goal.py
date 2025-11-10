@@ -2,6 +2,10 @@ from src.entities.salesperson_goal import SalespersonGoal, GoalType, Region, Qua
 from src.entities.salesperson import Salesperson
 from src.session import db
 from src.errors.errors import ValidationError
+try:
+    from src.services.integration_service import IntegrationService
+except Exception:
+    IntegrationService = None
 
 
 class CreateSalespersonGoal:

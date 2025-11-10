@@ -1,6 +1,6 @@
 from src.entities.salesperson_goal import SalespersonGoal, GoalType, Region, Quarter
 from src.session import db
-from src.errors.errors import ValidationError
+from src.errors.errors import ValidationError, NotFoundError
 from datetime import datetime
 
 
@@ -41,7 +41,7 @@ class UpdateSalespersonGoal:
         goal = SalespersonGoal.query.get(self.goal_id)
         
         if not goal:
-            raise ValidationError(f"Objetivo con ID {self.goal_id} no encontrado")
+            raise NotFoundError(f"Objetivo con ID {self.goal_id} no encontrado")
         
         return goal
     
