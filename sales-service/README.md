@@ -4,10 +4,15 @@ Servicio de ventas con capacidades de tracking de órdenes, filtrado avanzado po
 
 **Características principales:**
 - ✅ Gestión completa de clientes y órdenes
-- ✅ Filtros avanzados por fechas, estado, cliente y vendedor  
+- ✅ Filtros avanzados por fechas, estado y cliente  
 - ✅ Tracking de órdenes en tiempo real
 - ✅ Integración con servicios de catálogo y logística
 - ✅ Validación de stock en tiempo real
+- ✅ **Gestión de objetivos de vendedores (Salesperson Goals)** - NUEVO ✨
+  - CRUD completo con validaciones de negocio
+  - Objetivos por región, trimestre y tipo (monetario/unidades)
+  - Integración con productos del catálogo
+  - 100% de cobertura en tests unitarios
 
 ##  Quick Start
 

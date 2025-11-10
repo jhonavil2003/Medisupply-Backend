@@ -18,6 +18,7 @@ from src.entities.visit import Visit
 from src.entities.salesperson import Salesperson
 from src.entities.visit_status import VisitStatus
 from src.entities.visit_file import VisitFile
+from src.entities.salesperson_goal import SalespersonGoal, GoalType, Region, Quarter
 
 
 @pytest.fixture(scope='function')
@@ -511,3 +512,57 @@ def multiple_salespersons(db):
     
     db.session.commit()
     return salespersons
+
+
+# Salesperson Goals fixtures
+@pytest.fixture(scope='function')
+def sample_salesperson_goal(db, sample_salesperson):
+    """Create a sample salesperson goal for testing."""
+    goal = SalespersonGoal(
+        id_vendedor=sample_salesperson.employee_id,
+        id_producto='JER-001',
+        region=Region.NORTE.value,
+        trimestre=Quarter.Q1.value,
+        valor_objetivo=50000.00,
+        tipo=GoalType.MONETARIO.value
+    )
+    db.session.add(goal)
+    db.session.commit()
+    return goal
+
+
+@pytest.fixture(scope='function')
+def multiple_salesperson_goals(db, sample_salesperson, sample_salesperson_2):
+    """Create multiple salesperson goals for testing."""
+    goals = [
+        SalespersonGoal(
+            id_vendedor=sample_salesperson.employee_id,
+            id_producto='JER-001',
+            region=Region.NORTE.value,
+            trimestre=Quarter.Q1.value,
+            valor_objetivo=50000.00,
+            tipo=GoalType.MONETARIO.value
+        ),
+        SalespersonGoal(
+            id_vendedor=sample_salesperson.employee_id,
+            id_producto='JER-005',
+            region=Region.SUR.value,
+            trimestre=Quarter.Q2.value,
+            valor_objetivo=100,
+            tipo=GoalType.UNIDADES.value
+        ),
+        SalespersonGoal(
+            id_vendedor=sample_salesperson_2.employee_id,
+            id_producto='VAC-COVID-PF',
+            region=Region.ESTE.value,
+            trimestre=Quarter.Q1.value,
+            valor_objetivo=75000.00,
+            tipo=GoalType.MONETARIO.value
+        )
+    ]
+    
+    for goal in goals:
+        db.session.add(goal)
+    
+    db.session.commit()
+    return goals
