@@ -519,6 +519,264 @@ CUSTOMERS_DATA = [
 ]
 
 
+# ============================================================================
+# SALESPERSONS DATA
+# ============================================================================
+SALESPERSONS_DATA = [
+    {
+        'employee_id': 'EMP-001',
+        'first_name': 'Juan',
+        'last_name': 'Pérez García',
+        'email': 'juan.perez@medisupply.com',
+        'phone': '+57 300 1234567',
+        'territory': 'Norte',
+        'hire_date': date(2022, 3, 15),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-002',
+        'first_name': 'María',
+        'last_name': 'Rodríguez López',
+        'email': 'maria.rodriguez@medisupply.com',
+        'phone': '+57 310 2345678',
+        'territory': 'Sur',
+        'hire_date': date(2021, 7, 1),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-003',
+        'first_name': 'Carlos',
+        'last_name': 'Martínez Sánchez',
+        'email': 'carlos.martinez@medisupply.com',
+        'phone': '+57 320 3456789',
+        'territory': 'Este',
+        'hire_date': date(2023, 1, 10),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-004',
+        'first_name': 'Ana',
+        'last_name': 'González Torres',
+        'email': 'ana.gonzalez@medisupply.com',
+        'phone': '+57 315 4567890',
+        'territory': 'Oeste',
+        'hire_date': date(2022, 9, 20),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-005',
+        'first_name': 'Luis',
+        'last_name': 'Hernández Castro',
+        'email': 'luis.hernandez@medisupply.com',
+        'phone': '+57 318 5678901',
+        'territory': 'Norte',
+        'hire_date': date(2020, 5, 5),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-006',
+        'first_name': 'Laura',
+        'last_name': 'Ramírez Mendoza',
+        'email': 'laura.ramirez@medisupply.com',
+        'phone': '+57 312 6789012',
+        'territory': 'Sur',
+        'hire_date': date(2023, 6, 15),
+        'is_active': True
+    },
+    {
+        'employee_id': 'EMP-007',
+        'first_name': 'Diego',
+        'last_name': 'Torres Vargas',
+        'email': 'diego.torres@medisupply.com',
+        'phone': '+57 305 7890123',
+        'territory': 'Este',
+        'hire_date': date(2019, 11, 1),
+        'is_active': False  # Inactivo
+    },
+    {
+        'employee_id': 'EMP-008',
+        'first_name': 'Patricia',
+        'last_name': 'Ruiz Morales',
+        'email': 'patricia.ruiz@medisupply.com',
+        'phone': '+57 317 8901234',
+        'territory': 'Oeste',
+        'hire_date': date(2024, 2, 1),
+        'is_active': True
+    }
+]
+
+# ============================================================================
+# SALESPERSON GOALS DATA
+# ============================================================================
+SALESPERSON_GOALS_DATA = [
+    # Metas para Juan Pérez (EMP-001) - Región Norte, Q1 2025
+    {
+        'id_vendedor': 'EMP-001',
+        'id_producto': 'JER-001',
+        'region': 'Norte',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('5000'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-001',
+        'id_producto': 'GLV-LAT-M',
+        'region': 'Norte',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('15000.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-001',
+        'id_producto': 'MASK-N95',
+        'region': 'Norte',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('3000'),
+        'tipo': 'unidades'
+    },
+    
+    # Metas para María Rodríguez (EMP-002) - Región Sur, Q1 2025
+    {
+        'id_vendedor': 'EMP-002',
+        'id_producto': 'VAC-COVID-PF',
+        'region': 'Sur',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('2000'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-002',
+        'id_producto': 'INS-HUMAN-R',
+        'region': 'Sur',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('48000.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-002',
+        'id_producto': 'OX-PULSE-01',
+        'region': 'Sur',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('500'),
+        'tipo': 'unidades'
+    },
+    
+    # Metas para Carlos Martínez (EMP-003) - Región Este, Q1 2025
+    {
+        'id_vendedor': 'EMP-003',
+        'id_producto': 'BP-MON-AUTO',
+        'region': 'Este',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('22500.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-003',
+        'id_producto': 'THERM-DIG-01',
+        'region': 'Este',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('800'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-003',
+        'id_producto': 'JER-010',
+        'region': 'Este',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('6000'),
+        'tipo': 'unidades'
+    },
+    
+    # Metas para Ana González (EMP-004) - Región Oeste, Q1 2025
+    {
+        'id_vendedor': 'EMP-004',
+        'id_producto': 'GAUZE-10X10',
+        'region': 'Oeste',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('10000'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-004',
+        'id_producto': 'ALCO-500ML',
+        'region': 'Oeste',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('7000.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-004',
+        'id_producto': 'BAND-ELAS-5CM',
+        'region': 'Oeste',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('5000'),
+        'tipo': 'unidades'
+    },
+    
+    # Metas para Luis Hernández (EMP-005) - Región Norte, Q1 2025
+    {
+        'id_vendedor': 'EMP-005',
+        'id_producto': 'GLV-NIL-L',
+        'region': 'Norte',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('24000.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-005',
+        'id_producto': 'JER-005',
+        'region': 'Norte',
+        'trimestre': 'Q1',
+        'valor_objetivo': Decimal('8000'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-005',
+        'id_producto': 'MASK-N95',
+        'region': 'Norte',
+        'trimestre': 'Q3',
+        'valor_objetivo': Decimal('42000.00'),
+        'tipo': 'monetario'
+    },
+    
+    # Metas para Laura Ramírez (EMP-006) - Región Sur, Q2 2025
+    {
+        'id_vendedor': 'EMP-006',
+        'id_producto': 'OX-PULSE-01',
+        'region': 'Sur',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('17500.00'),
+        'tipo': 'monetario'
+    },
+    {
+        'id_vendedor': 'EMP-006',
+        'id_producto': 'BP-MON-AUTO',
+        'region': 'Sur',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('400'),
+        'tipo': 'unidades'
+    },
+    
+    # Metas para Patricia Ruiz (EMP-008) - Región Oeste, Q2 2025
+    {
+        'id_vendedor': 'EMP-008',
+        'id_producto': 'THERM-DIG-01',
+        'region': 'Oeste',
+        'trimestre': 'Q2',
+        'valor_objetivo': Decimal('1000'),
+        'tipo': 'unidades'
+    },
+    {
+        'id_vendedor': 'EMP-008',
+        'id_producto': 'GAUZE-10X10',
+        'region': 'Oeste',
+        'trimestre': 'Q3',
+        'valor_objetivo': Decimal('15000.00'),
+        'tipo': 'monetario'
+    }
+]
+
+
 # Helper function to get product by SKU
 def get_product_by_sku(sku):
     """Get product data by SKU."""
@@ -532,3 +790,42 @@ def get_product_by_sku(sku):
 def get_all_product_skus():
     """Get list of all product SKUs."""
     return [p['sku'] for p in PRODUCTS_DATA]
+
+
+# Helper function to get salesperson by employee_id
+def get_salesperson_by_employee_id(employee_id):
+    """Get salesperson data by employee_id."""
+    for salesperson in SALESPERSONS_DATA:
+        if salesperson['employee_id'] == employee_id:
+            return salesperson
+    return None
+
+
+# Helper function to get all active salespersons
+def get_active_salespersons():
+    """Get list of all active salespersons."""
+    return [s for s in SALESPERSONS_DATA if s['is_active']]
+
+
+# Helper function to get salespersons by territory
+def get_salespersons_by_territory(territory):
+    """Get list of salespersons by territory."""
+    return [s for s in SALESPERSONS_DATA if s['territory'] == territory]
+
+
+# Helper function to get goals by salesperson
+def get_goals_by_salesperson(employee_id):
+    """Get list of goals for a specific salesperson."""
+    return [g for g in SALESPERSON_GOALS_DATA if g['id_vendedor'] == employee_id]
+
+
+# Helper function to get goals by quarter
+def get_goals_by_quarter(quarter):
+    """Get list of goals for a specific quarter."""
+    return [g for g in SALESPERSON_GOALS_DATA if g['trimestre'] == quarter]
+
+
+# Helper function to get goals by region
+def get_goals_by_region(region):
+    """Get list of goals for a specific region."""
+    return [g for g in SALESPERSON_GOALS_DATA if g['region'] == region]
