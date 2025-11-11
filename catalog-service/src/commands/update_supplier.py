@@ -29,6 +29,24 @@ class UpdateSupplier:
                 'certification_date', 'certification_expiry', 'is_active'
             ]
 
+            # Handle nested address object if present
+            address = self.data.get('address')
+            if address and isinstance(address, dict):
+                # Map address fields from nested structure
+                if 'line1' in address:
+                    setattr(self.supplier, 'address_line1', address.get('line1'))
+                if 'line2' in address:
+                    setattr(self.supplier, 'address_line2', address.get('line2'))
+                if 'city' in address:
+                    setattr(self.supplier, 'city', address.get('city'))
+                if 'state' in address:
+                    setattr(self.supplier, 'state', address.get('state'))
+                if 'country' in address:
+                    setattr(self.supplier, 'country', address.get('country'))
+                if 'postal_code' in address:
+                    setattr(self.supplier, 'postal_code', address.get('postal_code'))
+
+            # Handle flat structure fields (backward compatibility)
             for k in updatable:
                 if k in self.data:
                     setattr(self.supplier, k, self.data.get(k))

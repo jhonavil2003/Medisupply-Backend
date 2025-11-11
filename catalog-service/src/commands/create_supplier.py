@@ -19,6 +19,9 @@ class CreateSupplier:
 
     def execute(self):
         try:
+            # Extract address fields from nested address object if present
+            address = self.data.get('address', {})
+            
             supplier = Supplier(
                 name=self.data.get('name'),
                 legal_name=self.data.get('legal_name'),
@@ -26,15 +29,16 @@ class CreateSupplier:
                 email=self.data.get('email'),
                 phone=self.data.get('phone'),
                 website=self.data.get('website'),
-                address_line1=self.data.get('address_line1'),
-                address_line2=self.data.get('address_line2'),
-                city=self.data.get('city'),
-                state=self.data.get('state'),
-                country=self.data.get('country'),
-                postal_code=self.data.get('postal_code'),
+                # Address fields: check both nested and flat structure for compatibility
+                address_line1=address.get('line1') or self.data.get('address_line1'),
+                address_line2=address.get('line2') or self.data.get('address_line2'),
+                city=address.get('city') or self.data.get('city'),
+                state=address.get('state') or self.data.get('state'),
+                country=address.get('country') or self.data.get('country'),
+                postal_code=address.get('postal_code') or self.data.get('postal_code'),
                 payment_terms=self.data.get('payment_terms'),
                 credit_limit=self.data.get('credit_limit'),
-                currency=self.data.get('currency'),
+                currency=self.data.get('currency'),  # Allow null, no default
                 is_certified=self.data.get('is_certified', False),
                 certification_date=self.data.get('certification_date'),
                 certification_expiry=self.data.get('certification_expiry'),
