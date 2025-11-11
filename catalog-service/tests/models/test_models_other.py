@@ -32,7 +32,7 @@ class TestSupplierModel:
         db.session.add(supplier)
         db.session.commit()
         
-        assert supplier.currency == 'USD'
+        assert supplier.currency is None  # Currency no longer has USD default
         assert supplier.is_certified is False
         assert supplier.is_active is True
     
