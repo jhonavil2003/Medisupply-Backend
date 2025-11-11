@@ -28,7 +28,7 @@ class Supplier(db.Model):
     # Información comercial
     payment_terms = db.Column(db.String(100))  # ej: "Net 30", "Net 60"
     credit_limit = db.Column(db.Numeric(15, 2))
-    currency = db.Column(db.String(3), default='USD')
+    currency = db.Column(db.String(3))  # Removed default='USD' to allow null
     
     # Certificaciones
     is_certified = db.Column(db.Boolean, default=False)
