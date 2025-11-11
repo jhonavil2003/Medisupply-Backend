@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from src.session import db, init_db
 from src.errors.errors import register_error_handlers
 from src.blueprints.products import products_bp
+from src.blueprints.suppliers import suppliers_bp
 
 load_dotenv()
 
@@ -25,6 +26,7 @@ def create_app(config=None):
     register_error_handlers(app)
     
     app.register_blueprint(products_bp)
+    app.register_blueprint(suppliers_bp)
     
     @app.route('/', methods=['GET'])
     def index():
@@ -34,6 +36,7 @@ def create_app(config=None):
             'status': 'running',
             'endpoints': {
                 'products': '/products',
+                'suppliers': '/suppliers',
                 'health': '/health'
             }
         }), 200
