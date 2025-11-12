@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from src.session import db, init_db
 from src.errors.errors import register_error_handlers
 from src.blueprints.products import products_bp
+from src.blueprints.bulk_upload import bulk_upload_bp
 
 load_dotenv()
 
@@ -25,6 +26,7 @@ def create_app(config=None):
     register_error_handlers(app)
     
     app.register_blueprint(products_bp)
+    app.register_blueprint(bulk_upload_bp)
     
     @app.route('/', methods=['GET'])
     def index():
@@ -33,7 +35,8 @@ def create_app(config=None):
             'version': '1.0.0',
             'status': 'running',
             'endpoints': {
-                'products': '/products',
+                'products': '/api/products',
+                'bulk_upload': '/api/products/bulk-upload',
                 'health': '/health'
             }
         }), 200
