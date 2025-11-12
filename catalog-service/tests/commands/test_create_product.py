@@ -360,3 +360,304 @@ class TestCreateProduct:
             
             # Verify rollback was called
             mock_rollback.assert_called_once()
+
+    def test_create_product_empty_string_sku(self, app, sample_supplier):
+        """Test validation error when SKU is empty string"""
+        with app.app_context():
+            data = {
+                'sku': '   ',  # Solo espacios en blanco
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            with pytest.raises(ValidationError) as exc_info:
+                CreateProduct(data)
+            
+            assert "Field 'sku' is required" in exc_info.value.message
+
+    def test_create_product_empty_string_name(self, app, sample_supplier):
+        """Test validation error when name is empty string"""
+        with app.app_context():
+            data = {
+                'sku': 'TEST-EMPTY-NAME',
+                'name': '',  # String vacío
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            with pytest.raises(ValidationError) as exc_info:
+                CreateProduct(data)
+            
+            assert "Field 'name' is required" in exc_info.value.message
+
+    def test_create_product_none_category(self, app, sample_supplier):
+        """Test validation error when category is None"""
+        with app.app_context():
+            data = {
+                'sku': 'TEST-NONE-CAT',
+                'name': 'Test Product',
+                'category': None,
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            with pytest.raises(ValidationError) as exc_info:
+                CreateProduct(data)
+            
+            assert "Field 'category' is required" in exc_info.value.message
+
+    def test_create_product_none_unit_price(self, app, sample_supplier):
+        """Test validation error when unit_price is None"""
+        with app.app_context():
+            data = {
+                'sku': 'TEST-NONE-PRICE',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': None,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            with pytest.raises(ValidationError) as exc_info:
+                CreateProduct(data)
+            
+            assert "Field 'unit_price' is required" in exc_info.value.message
+
+    def test_create_product_invalid_unit_price(self, app, sample_supplier):
+        """Test validation error when unit_price is not a valid number"""
+        with app.app_context():
+            data = {
+                'sku': 'TEST-INVALID-PRICE',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 'not-a-number',
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            with pytest.raises(ValidationError) as exc_info:
+                CreateProduct(data)
+            
+            assert "Invalid numeric values provided" in exc_info.value.message
+
+    def test_create_product_integrity_error_duplicate_sku(self, app, sample_supplier, mocker):
+        """Test IntegrityError handling for duplicate SKU at database level"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            from sqlalchemy.exc import DBAPIError
+            
+            data = {
+                'sku': 'TEST-INTEG-SKU',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            # Create a proper IntegrityError with orig attribute
+            class MockOrig:
+                def __str__(self):
+                    return "UNIQUE constraint failed: products.sku"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = CreateProduct(data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "already exists" in exc_info.value.message
+
+    def test_create_product_integrity_error_duplicate_other(self, app, sample_supplier, mocker):
+        """Test IntegrityError handling for duplicate constraint on non-SKU field"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {
+                'sku': 'TEST-INTEG-OTHER',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id,
+                'barcode': '1234567890'
+            }
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            # Create IntegrityError for duplicate barcode (not SKU)
+            class MockOrig:
+                def __str__(self):
+                    return "UNIQUE constraint failed: products.barcode"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = CreateProduct(data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "A product with this information already exists" in exc_info.value.message
+
+    def test_create_product_integrity_error_not_null(self, app, sample_supplier, mocker):
+        """Test IntegrityError handling for NOT NULL constraint"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {
+                'sku': 'TEST-INTEG-NULL',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "NOT NULL constraint failed: products.name"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = CreateProduct(data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Required field cannot be null" in exc_info.value.message
+
+    def test_create_product_integrity_error_foreign_key(self, app, sample_supplier, mocker):
+        """Test IntegrityError handling for FOREIGN KEY constraint"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {
+                'sku': 'TEST-INTEG-FK',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "FOREIGN KEY constraint failed"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = CreateProduct(data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Invalid supplier ID provided" in exc_info.value.message
+
+    def test_create_product_integrity_error_generic(self, app, sample_supplier, mocker):
+        """Test IntegrityError handling for generic constraint"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {
+                'sku': 'TEST-INTEG-GEN',
+                'name': 'Test Product',
+                'category': 'Test',
+                'unit_price': 50.00,
+                'unit_of_measure': 'piece',
+                'supplier_id': sample_supplier.id
+            }
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "Some other constraint violation"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = CreateProduct(data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Database constraint violation" in exc_info.value.message
+
+    def test_create_product_with_all_optional_fields(self, app, sample_supplier):
+        """Test product creation with all optional fields filled"""
+        with app.app_context():
+            data = {
+                'sku': 'TEST-ALL-FIELDS',
+                'name': 'Complete Product',
+                'description': 'Full description',
+                'category': 'Medical',
+                'subcategory': 'Surgical',
+                'unit_price': 200.00,
+                'currency': 'EUR',
+                'unit_of_measure': 'box',
+                'supplier_id': sample_supplier.id,
+                'requires_cold_chain': True,
+                'storage_temperature_min': -20.0,
+                'storage_temperature_max': -10.0,
+                'storage_humidity_max': 40.0,
+                'sanitary_registration': 'REG-2025-ABC',
+                'requires_prescription': True,
+                'regulatory_class': 'Class III',
+                'weight_kg': 5.5,
+                'length_cm': 40.0,
+                'width_cm': 30.0,
+                'height_cm': 20.0,
+                'is_active': False,
+                'is_discontinued': True,
+                'manufacturer': 'MediCorp',
+                'country_of_origin': 'Germany',
+                'barcode': '1234567890123',
+                'image_url': 'https://example.com/image.jpg'
+            }
+            
+            command = CreateProduct(data)
+            result = command.execute()
+            
+            assert result['sku'] == 'TEST-ALL-FIELDS'
+            assert result['description'] == 'Full description'
+            assert result['subcategory'] == 'Surgical'
+            assert result['currency'] == 'EUR'
+            assert result['requires_cold_chain'] is True
+            assert result['storage_conditions']['temperature_min'] == -20.0
+            assert result['storage_conditions']['temperature_max'] == -10.0
+            assert result['storage_conditions']['humidity_max'] == 40.0
+            assert result['regulatory_info']['sanitary_registration'] == 'REG-2025-ABC'
+            assert result['regulatory_info']['requires_prescription'] is True
+            assert result['regulatory_info']['regulatory_class'] == 'Class III'
+            assert result['physical_dimensions']['weight_kg'] == 5.5
+            assert result['physical_dimensions']['length_cm'] == 40.0
+            assert result['physical_dimensions']['width_cm'] == 30.0
+            assert result['physical_dimensions']['height_cm'] == 20.0
+            assert result['is_active'] is False
+            assert result['is_discontinued'] is True
+            assert result['manufacturer'] == 'MediCorp'
+            assert result['country_of_origin'] == 'Germany'
+            assert result['barcode'] == '1234567890123'
+            assert result['image_url'] == 'https://example.com/image.jpg'

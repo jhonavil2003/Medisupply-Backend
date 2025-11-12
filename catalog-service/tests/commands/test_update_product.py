@@ -338,3 +338,94 @@ class TestUpdateProduct:
             
             # Verify rollback was called
             mock_rollback.assert_called_once()
+
+    def test_update_product_integrity_error_duplicate_sku(self, app, sample_product, mocker):
+        """Test IntegrityError handling for duplicate SKU at database level"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {'sku': 'ANOTHER-SKU', 'name': 'Updated Name'}
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "UNIQUE constraint failed: products.sku"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = UpdateProduct(product_id=sample_product.id, data=data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "already exists" in exc_info.value.message
+
+    def test_update_product_integrity_error_foreign_key(self, app, sample_product, sample_supplier, mocker):
+        """Test IntegrityError handling for FOREIGN KEY constraint"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            # Use a valid supplier_id to pass initial validation
+            data = {'supplier_id': sample_supplier.id, 'name': 'Updated Name'}
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "FOREIGN KEY constraint failed"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = UpdateProduct(product_id=sample_product.id, data=data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Invalid supplier ID provided" in exc_info.value.message
+
+    def test_update_product_integrity_error_generic(self, app, sample_product, mocker):
+        """Test IntegrityError handling for generic constraint"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            data = {'name': 'Updated Name'}
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "Some other constraint violation"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = UpdateProduct(product_id=sample_product.id, data=data)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Database constraint violation" in exc_info.value.message
+
+    def test_update_product_with_none_values(self, app, sample_product):
+        """Test updating fields to None (clearing optional fields)"""
+        with app.app_context():
+            data = {
+                'description': None,
+                'subcategory': None,
+                'weight_kg': None,
+                'barcode': None
+            }
+            
+            command = UpdateProduct(product_id=sample_product.id, data=data)
+            result = command.execute()
+            
+            assert result['description'] == '' or result['description'] is None
+            assert result['subcategory'] is None
+            assert result['physical_dimensions']['weight_kg'] is None
+            assert result['barcode'] is None

@@ -8,6 +8,7 @@ from src.errors.errors import register_error_handlers
 from src.blueprints.products import products_bp
 from src.blueprints.bulk_upload import bulk_upload_bp
 from src.blueprints.suppliers import suppliers_bp
+from src.blueprints.bulk_upload_suppliers import bulk_upload_suppliers_bp
 
 load_dotenv()
 
@@ -29,6 +30,7 @@ def create_app(config=None):
     app.register_blueprint(products_bp)
     app.register_blueprint(bulk_upload_bp)
     app.register_blueprint(suppliers_bp)
+    app.register_blueprint(bulk_upload_suppliers_bp)
     
     @app.route('/', methods=['GET'])
     def index():
@@ -38,9 +40,9 @@ def create_app(config=None):
             'status': 'running',
             'endpoints': {
                 'products': '/api/products',
-                'bulk_upload': '/api/products/bulk-upload',
-                'products': '/products',
-                'suppliers': '/suppliers',
+                'products_bulk_upload': '/api/products/bulk-upload',
+                'suppliers': '/api/suppliers',
+                'suppliers_bulk_upload': '/api/suppliers/bulk-upload',
                 'health': '/health'
             }
         }), 200
