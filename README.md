@@ -1,3 +1,0 @@
-# Medisupply-Backend
-
-Microservicios
