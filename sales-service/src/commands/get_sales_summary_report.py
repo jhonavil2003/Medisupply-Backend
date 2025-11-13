@@ -60,95 +60,96 @@ class GetSalesSummaryReport:
         Returns:
             Dictionary with summary data and metadata
         """
-        # Build base query with joins - AGRUPAR SOLO POR VENTAS REALES
+        # Build base query with joins - INCLUIR SalespersonGoal para agrupar por región y tipo
         query = db.session.query(
             func.date(Order.order_date).label('fecha'),
             Salesperson.employee_id.label('employee_id'),
             func.concat(Salesperson.first_name, ' ', Salesperson.last_name).label('vendedor'),
             Salesperson.territory.label('territory'),
+            SalespersonGoal.region.label('region'),
             OrderItem.product_sku.label('product_sku'),
             OrderItem.product_name.label('product_name'),
+            SalespersonGoal.tipo.label('tipo_objetivo'),
+            SalespersonGoal.valor_objetivo.label('valor_objetivo'),
             func.sum(OrderItem.quantity).label('volumen_ventas'),
             func.sum(OrderItem.total).label('valor_total')
         ).select_from(Order)\
          .join(OrderItem, Order.id == OrderItem.order_id)\
-         .join(Salesperson, Order.seller_id == Salesperson.employee_id)
+         .join(Salesperson, Order.seller_id == Salesperson.employee_id)\
+         .outerjoin(
+             SalespersonGoal,
+             (SalespersonGoal.id_vendedor == Salesperson.employee_id) &
+             (SalespersonGoal.id_producto == OrderItem.product_sku)
+         )
         
         # Apply filters
         query = self._apply_filters(query)
         
-        # Group by - SIN incluir campos de SalespersonGoal
+        # Group by - INCLUIR región y tipo de objetivo
         query = query.group_by(
             func.date(Order.order_date),
             Salesperson.employee_id,
             Salesperson.first_name,
             Salesperson.last_name,
             Salesperson.territory,
+            SalespersonGoal.region,
             OrderItem.product_sku,
-            OrderItem.product_name
+            OrderItem.product_name,
+            SalespersonGoal.tipo,
+            SalespersonGoal.valor_objetivo
         )
         
         # Order by date and salesperson
         query = query.order_by(
             func.date(Order.order_date).desc(),
-            Salesperson.employee_id
+            Salesperson.employee_id,
+            SalespersonGoal.region,
+            SalespersonGoal.tipo
         )
         
         # Execute query
         results = query.all()
         
-        # Format results and get goals for each row
+        # Format results
         summary_data = []
         for row in results:
-            # Buscar objetivos para este vendedor y producto
-            goals = SalespersonGoal.query.filter_by(
-                id_vendedor=row.employee_id,
-                id_producto=row.product_sku
-            ).all()
-            
-            # Extraer objetivos de unidades y monetarios
-            goal_units = None
-            goal_amount = None
-            region = None
-            
-            for goal in goals:
-                if goal.tipo == 'unidades':
-                    goal_units = float(goal.valor_objetivo)
-                    if not region:
-                        region = goal.region
-                elif goal.tipo == 'monetario':
-                    goal_amount = float(goal.valor_objetivo)
-                    if not region:
-                        region = goal.region
+            # Handle fecha - SQLite returns string, PostgreSQL returns date
+            if row.fecha:
+                if isinstance(row.fecha, str):
+                    fecha_str = row.fecha
+                else:
+                    fecha_str = row.fecha.isoformat()
+            else:
+                fecha_str = None
             
             item = {
-                'fecha': row.fecha.isoformat() if row.fecha else None,
+                'fecha': fecha_str,
                 'employee_id': row.employee_id,
                 'vendedor': row.vendedor,
-                'region': region,  # Región del objetivo (si existe)
+                'region': row.region,
                 'territory': row.territory,
                 'product_sku': row.product_sku,
                 'product_name': row.product_name,
+                'tipo_objetivo': row.tipo_objetivo,
                 'volumen_ventas': int(row.volumen_ventas) if row.volumen_ventas else 0,
                 'valor_total': float(row.valor_total) if row.valor_total else 0.0,
-                'objetivo_unidades': goal_units,
-                'objetivo_monetario': goal_amount,
+                'valor_objetivo': float(row.valor_objetivo) if row.valor_objetivo else None,
             }
             
-            # Calculate achievement percentages
-            if goal_units and row.volumen_ventas:
-                item['cumplimiento_unidades'] = round(
-                    (float(row.volumen_ventas) / goal_units) * 100, 2
-                )
+            # Calculate achievement percentage based on tipo_objetivo
+            if row.valor_objetivo:
+                if row.tipo_objetivo == 'unidades' and row.volumen_ventas:
+                    item['cumplimiento_porcentaje'] = round(
+                        (float(row.volumen_ventas) / float(row.valor_objetivo)) * 100, 2
+                    )
+                elif row.tipo_objetivo == 'monetario' and row.valor_total:
+                    item['cumplimiento_porcentaje'] = round(
+                        (float(row.valor_total) / float(row.valor_objetivo)) * 100, 2
+                    )
+                else:
+                    item['cumplimiento_porcentaje'] = None
             else:
-                item['cumplimiento_unidades'] = None
-                
-            if goal_amount and row.valor_total:
-                item['cumplimiento_monetario'] = round(
-                    (float(row.valor_total) / goal_amount) * 100, 2
-                )
-            else:
-                item['cumplimiento_monetario'] = None
+                item['cumplimiento_porcentaje'] = None
             
             summary_data.append(item)
         
@@ -189,7 +190,7 @@ class GetSalesSummaryReport:
                 raise ValidationError('Invalid year')
             query = query.filter(extract('year', Order.order_date) == self.year)
         
-        # Region filter
+        # Region filter - ahora sí funciona porque SalespersonGoal está en el JOIN
         if self.region:
             query = query.filter(SalespersonGoal.region == self.region)
         
