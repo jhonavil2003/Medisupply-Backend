@@ -60,40 +60,29 @@ class GetSalesSummaryReport:
         Returns:
             Dictionary with summary data and metadata
         """
-        # Build base query with joins
+        # Build base query with joins - AGRUPAR SOLO POR VENTAS REALES
         query = db.session.query(
             func.date(Order.order_date).label('fecha'),
             Salesperson.employee_id.label('employee_id'),
             func.concat(Salesperson.first_name, ' ', Salesperson.last_name).label('vendedor'),
-            SalespersonGoal.region.label('region'),
             Salesperson.territory.label('territory'),
             OrderItem.product_sku.label('product_sku'),
             OrderItem.product_name.label('product_name'),
             func.sum(OrderItem.quantity).label('volumen_ventas'),
-            func.sum(OrderItem.total).label('valor_total'),
-            func.max(SalespersonGoal.valor_objetivo).label('valor_objetivo'),
-            func.max(SalespersonGoal.tipo).label('tipo_objetivo')
+            func.sum(OrderItem.total).label('valor_total')
         ).select_from(Order)\
          .join(OrderItem, Order.id == OrderItem.order_id)\
-         .join(Salesperson, Order.seller_id == Salesperson.employee_id)\
-         .outerjoin(
-            SalespersonGoal,
-            db.and_(
-                Salesperson.employee_id == SalespersonGoal.id_vendedor,
-                SalespersonGoal.id_producto == OrderItem.product_sku
-            )
-        )
+         .join(Salesperson, Order.seller_id == Salesperson.employee_id)
         
         # Apply filters
         query = self._apply_filters(query)
         
-        # Group by
+        # Group by - SIN incluir campos de SalespersonGoal
         query = query.group_by(
             func.date(Order.order_date),
             Salesperson.employee_id,
             Salesperson.first_name,
             Salesperson.last_name,
-            SalespersonGoal.region,
             Salesperson.territory,
             OrderItem.product_sku,
             OrderItem.product_name
@@ -108,39 +97,58 @@ class GetSalesSummaryReport:
         # Execute query
         results = query.all()
         
-        # Format results
+        # Format results and get goals for each row
         summary_data = []
         for row in results:
+            # Buscar objetivos para este vendedor y producto
+            goals = SalespersonGoal.query.filter_by(
+                id_vendedor=row.employee_id,
+                id_producto=row.product_sku
+            ).all()
+            
+            # Extraer objetivos de unidades y monetarios
+            goal_units = None
+            goal_amount = None
+            region = None
+            
+            for goal in goals:
+                if goal.tipo == 'unidades':
+                    goal_units = float(goal.valor_objetivo)
+                    if not region:
+                        region = goal.region
+                elif goal.tipo == 'monetario':
+                    goal_amount = float(goal.valor_objetivo)
+                    if not region:
+                        region = goal.region
+            
             item = {
                 'fecha': row.fecha.isoformat() if row.fecha else None,
                 'employee_id': row.employee_id,
                 'vendedor': row.vendedor,
-                'region': row.region,
+                'region': region,  # Región del objetivo (si existe)
                 'territory': row.territory,
                 'product_sku': row.product_sku,
                 'product_name': row.product_name,
                 'volumen_ventas': int(row.volumen_ventas) if row.volumen_ventas else 0,
                 'valor_total': float(row.valor_total) if row.valor_total else 0.0,
-                'valor_objetivo': float(row.valor_objetivo) if row.valor_objetivo else None,
-                'tipo_objetivo': row.tipo_objetivo,
+                'objetivo_unidades': goal_units,
+                'objetivo_monetario': goal_amount,
             }
             
-            # Calculate achievement percentage if goals exist
-            # If tipo_objetivo is 'unidades', compare with volumen_ventas
-            # If tipo_objetivo is 'monetario', compare with valor_total
-            if row.valor_objetivo:
-                if row.tipo_objetivo == 'unidades' and row.volumen_ventas:
-                    item['achievement_percent'] = round(
-                        (float(row.volumen_ventas) / float(row.valor_objetivo)) * 100, 2
-                    )
-                elif row.tipo_objetivo == 'monetario' and row.valor_total:
-                    item['achievement_percent'] = round(
-                        (float(row.valor_total) / float(row.valor_objetivo)) * 100, 2
-                    )
-                else:
-                    item['achievement_percent'] = None
+            # Calculate achievement percentages
+            if goal_units and row.volumen_ventas:
+                item['cumplimiento_unidades'] = round(
+                    (float(row.volumen_ventas) / goal_units) * 100, 2
+                )
             else:
-                item['achievement_percent'] = None
+                item['cumplimiento_unidades'] = None
+                
+            if goal_amount and row.valor_total:
+                item['cumplimiento_monetario'] = round(
+                    (float(row.valor_total) / goal_amount) * 100, 2
+                )
+            else:
+                item['cumplimiento_monetario'] = None
             
             summary_data.append(item)
         
