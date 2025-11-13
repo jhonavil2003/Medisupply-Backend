@@ -9,6 +9,7 @@ from src.blueprints.visits import visits_bp
 from src.blueprints.salespersons import salespersons_bp
 from src.blueprints.visit_files import visit_files_bp, files_bp
 from src.blueprints.salesperson_goals import salesperson_goals_bp
+from src.blueprints.reports import reports_bp
 
 
 def create_app(config=None):
@@ -55,6 +56,7 @@ def create_app(config=None):
     app.register_blueprint(visit_files_bp)
     app.register_blueprint(files_bp)  # Blueprint global para DELETE /api/visits/files/{fileId}
     app.register_blueprint(salesperson_goals_bp)  # Blueprint para objetivos de vendedores
+    app.register_blueprint(reports_bp)  # Blueprint para reportes e informes
     
     @app.route('/health', methods=['GET'])
     def health():
