@@ -2,6 +2,7 @@
 Blueprint for sales reports endpoints.
 Provides aggregated reports and analytics for sales data.
 """
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from src.commands.get_sales_summary_report import GetSalesSummaryReport
 from src.errors.errors import ApiError, ValidationError
@@ -80,6 +81,19 @@ def get_sales_summary():
         employee_id = request.args.get('employee_id')
         order_status = request.args.get('order_status')
         
+        # Validate date formats
+        if from_date:
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('from_date must be in YYYY-MM-DD format')
+        
+        if to_date:
+            try:
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('to_date must be in YYYY-MM-DD format')
+        
         # Get month and year (convert to int if provided)
         month = request.args.get('month')
         year = request.args.get('year')
@@ -154,6 +168,19 @@ def get_sales_by_salesperson():
         month = request.args.get('month')
         year = request.args.get('year')
         
+        # Validate date formats
+        if from_date:
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('from_date must be in YYYY-MM-DD format')
+        
+        if to_date:
+            try:
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('to_date must be in YYYY-MM-DD format')
+        
         if month:
             month = int(month)
         if year:
@@ -200,6 +227,12 @@ def get_sales_by_salesperson():
             'total_salespersons': len(salesperson_summary),
             'filters_applied': result['filters_applied']
         }), 200
+    
+    except ValidationError as e:
+        return jsonify({
+            'error': str(e),
+            'error_type': 'validation_error'
+        }), 400
         
     except Exception as e:
         return jsonify({
@@ -226,6 +259,19 @@ def get_sales_by_product():
         product_sku = request.args.get('product_sku')
         month = request.args.get('month')
         year = request.args.get('year')
+        
+        # Validate date formats
+        if from_date:
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('from_date must be in YYYY-MM-DD format')
+        
+        if to_date:
+            try:
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('to_date must be in YYYY-MM-DD format')
         
         if month:
             month = int(month)
@@ -272,6 +318,12 @@ def get_sales_by_product():
             'total_products': len(product_summary),
             'filters_applied': result['filters_applied']
         }), 200
+    
+    except ValidationError as e:
+        return jsonify({
+            'error': str(e),
+            'error_type': 'validation_error'
+        }), 400
         
     except Exception as e:
         return jsonify({
