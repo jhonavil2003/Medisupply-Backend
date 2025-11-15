@@ -392,3 +392,14 @@ def multiple_vehicles(db, sample_distribution_center, sample_distribution_center
         db.session.add(vehicle)
     db.session.commit()
     return vehicles
+
+
+@pytest.fixture
+def socketio_client(app):
+    """Fixture para cliente de Socket.IO en tests."""
+    from flask_socketio import SocketIOTestClient
+    from src.websockets.websocket_manager import socketio
+    
+    if socketio:
+        return socketio.test_client(app)
+    return None
