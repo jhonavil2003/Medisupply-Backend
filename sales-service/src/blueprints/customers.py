@@ -3,6 +3,7 @@ from src.commands.get_customers import GetCustomers
 from src.commands.get_customer_by_id import GetCustomerById
 from src.commands.create_customer import CreateCustomer
 from src.commands.validate_document import ValidateDocument
+from src.commands.assign_salesperson_to_customer import AssignSalespersonToCustomer
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
@@ -30,6 +31,7 @@ def create_customer():
         longitude (float, opcional): Longitud GPS (debe estar entre -180.0 y 180.0)
         credit_limit (float, opcional): Límite de crédito (por defecto: 0.0)
         credit_days (int, opcional): Días de crédito (por defecto: 0)
+        salesperson_id (int, opcional): ID del vendedor asignado
         is_active (bool, opcional): Estado activo (por defecto: true)
     
     Retorna:
@@ -48,6 +50,7 @@ def create_customer():
             "contact_email": "contacto@hospitalsanjuan.com",
             "contact_phone": "+57 1 234 5678",
             "address": "Calle 45 # 12-34",
+            "salesperson_id": 5
             "neighborhood": "Chapinero",
             "city": "Bogotá",
             "department": "Cundinamarca",
@@ -198,6 +201,121 @@ def validate_document():
     except Exception as e:
         return jsonify({
             'error': str(e)
+        }), 500
+
+
+@customers_bp.route('/<int:customer_id>/assign-salesperson', methods=['PUT'])
+def assign_salesperson(customer_id):
+    """
+    Asignar o actualizar el vendedor asignado a un cliente.
+    
+    Args:
+        customer_id (int): ID del cliente
+    
+    Body (JSON):
+        salesperson_id (int or null): ID del vendedor a asignar (null para desasignar)
+    
+    Retorna:
+        200: Vendedor asignado exitosamente
+        400: Error de validación
+        404: Cliente o vendedor no encontrado
+        500: Error interno del servidor
+    
+    Ejemplo:
+        PUT /customers/1/assign-salesperson
+        {
+            "salesperson_id": 5
+        }
+        
+        # Para desasignar:
+        {
+            "salesperson_id": null
+        }
+    """
+    try:
+        data = request.get_json()
+        
+        if 'salesperson_id' not in data:
+            return jsonify({
+                'error': 'salesperson_id is required in request body'
+            }), 400
+        
+        salesperson_id = data['salesperson_id']
+        
+        # Execute command
+        command = AssignSalespersonToCustomer(customer_id, salesperson_id)
+        result = command.execute()
+        
+        action = 'assigned' if salesperson_id else 'unassigned'
+        
+        return jsonify({
+            'message': f'Salesperson {action} successfully',
+            'customer': result
+        }), 200
+        
+    except Exception as e:
+        from src.errors.errors import ValidationError, NotFoundError
+        
+        if isinstance(e, NotFoundError):
+            return jsonify({'error': str(e)}), 404
+        elif isinstance(e, ValidationError):
+            return jsonify({'error': str(e)}), 400
+        else:
+            return jsonify({
+                'error': f'An error occurred: {str(e)}'
+            }), 500
+
+
+@customers_bp.route('/by-salesperson/<int:salesperson_id>', methods=['GET'])
+def get_customers_by_salesperson(salesperson_id):
+    """
+    Obtener todos los clientes asignados a un vendedor específico.
+    
+    Args:
+        salesperson_id (int): ID del vendedor
+    
+    Query Parameters:
+        is_active (bool, opcional): Filtrar por estado activo/inactivo
+        page (int, opcional): Número de página (por defecto: 1)
+        per_page (int, opcional): Resultados por página (por defecto: 50)
+    
+    Retorna:
+        200: Lista de clientes
+        500: Error interno del servidor
+    
+    Ejemplo:
+        GET /customers/by-salesperson/5?is_active=true&page=1&per_page=20
+    """
+    try:
+        from src.models.customer import Customer
+        
+        # Get query parameters
+        is_active = request.args.get('is_active')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        
+        # Build query
+        query = Customer.query.filter_by(salesperson_id=salesperson_id)
+        
+        # Apply filters
+        if is_active is not None:
+            is_active_bool = is_active.lower() in ['true', '1', 'yes']
+            query = query.filter_by(is_active=is_active_bool)
+        
+        # Paginate
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        return jsonify({
+            'customers': [customer.to_dict() for customer in pagination.items],
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': pagination.pages
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'An error occurred: {str(e)}'
         }), 500
 
 

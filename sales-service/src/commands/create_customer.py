@@ -1,4 +1,5 @@
 from src.models.customer import Customer
+from src.entities.salesperson import Salesperson
 from src.session import db
 from src.errors.errors import ValidationError
 import re
@@ -119,6 +120,18 @@ class CreateCustomer:
         has_longitude = self.data.get('longitude') is not None
         if has_latitude != has_longitude:
             raise ValidationError("Both latitude and longitude must be provided together")
+        
+        # Validate salesperson_id if provided
+        if self.data.get('salesperson_id') is not None:
+            try:
+                salesperson_id = int(self.data['salesperson_id'])
+                salesperson = Salesperson.query.get(salesperson_id)
+                if not salesperson:
+                    raise ValidationError(f"Salesperson with ID {salesperson_id} not found")
+                if not salesperson.is_active:
+                    raise ValidationError(f"Salesperson with ID {salesperson_id} is not active")
+            except ValueError:
+                raise ValidationError("salesperson_id must be a valid integer")
     
     def _check_customer_exists(self):
         """Check if customer with same document already exists."""
@@ -149,6 +162,7 @@ class CreateCustomer:
             longitude=float(self.data['longitude']) if self.data.get('longitude') is not None else None,
             credit_limit=float(self.data.get('credit_limit', 0.0)),
             credit_days=int(self.data.get('credit_days', 0)),
+            salesperson_id=int(self.data['salesperson_id']) if self.data.get('salesperson_id') is not None else None,
             is_active=bool(self.data.get('is_active', True))
         )
         
