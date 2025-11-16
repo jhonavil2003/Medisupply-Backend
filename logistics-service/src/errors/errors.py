@@ -28,6 +28,10 @@ class ValidationError(ApiError):
     """Validation error"""
     status_code = 400
 
+class ConflictError(ApiError):
+    """Conflict error (e.g., insufficient stock, duplicate resource)"""
+    status_code = 409
+
 def register_error_handlers(app):
     """Register error handlers with Flask app"""
     

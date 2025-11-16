@@ -7,3 +7,4 @@ from .delivery_route import DeliveryRoute
 from .route_stop import RouteStop
 from .route_assignment import RouteAssignment
 from .geocoded_address import GeocodedAddress
+from .cart_reservation import CartReservation
