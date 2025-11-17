@@ -319,6 +319,95 @@ def get_customers_by_salesperson(salesperson_id):
         }), 500
 
 
+@customers_bp.route('/batch', methods=['POST'])
+def get_customers_batch():
+    """
+    Obtiene múltiples clientes por sus IDs (batch request).
+    
+    Útil para logistics-service al generar rutas de visitas.
+    
+    Body (JSON):
+        customer_ids (List[int]): Lista de IDs de clientes a obtener - Requerido
+    
+    Retorna:
+        200: Clientes encontrados
+        {
+            "customers": [
+                {
+                    "id": 1,
+                    "business_name": "Farmacia San Rafael",
+                    "document_type": "NIT",
+                    "document_number": "900123456-1",
+                    "customer_type": "farmacia",
+                    "address": "Calle 50 #20-30",
+                    "latitude": 4.6486259,
+                    "longitude": -74.0628451,
+                    ...
+                }
+            ],
+            "total": 1,
+            "not_found": [],
+            "requested": 1
+        }
+        400: Error de validación
+        500: Error interno del servidor
+    
+    Ejemplo:
+        POST /customers/batch
+        {
+            "customer_ids": [1, 5, 12, 45]
+        }
+    """
+    try:
+        from src.models.customer import Customer
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Request body is required'}), 400
+        
+        customer_ids = data.get('customer_ids')
+        
+        if not customer_ids:
+            return jsonify({'error': 'customer_ids is required'}), 400
+        
+        if not isinstance(customer_ids, list):
+            return jsonify({'error': 'customer_ids must be an array'}), 400
+        
+        if not customer_ids:
+            return jsonify({
+                'customers': [],
+                'total': 0,
+                'not_found': [],
+                'requested': 0
+            }), 200
+        
+        # Validar que todos sean enteros
+        try:
+            customer_ids = [int(cid) for cid in customer_ids]
+        except (ValueError, TypeError):
+            return jsonify({'error': 'All customer_ids must be integers'}), 400
+        
+        # Obtener clientes
+        customers = Customer.query.filter(Customer.id.in_(customer_ids)).all()
+        
+        # Identificar cuáles no se encontraron
+        found_ids = {customer.id for customer in customers}
+        not_found = [cid for cid in customer_ids if cid not in found_ids]
+        
+        return jsonify({
+            'customers': [customer.to_dict() for customer in customers],
+            'total': len(customers),
+            'not_found': not_found,
+            'requested': len(customer_ids)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'An error occurred: {str(e)}'
+        }), 500
+
+
 @customers_bp.route('/health', methods=['GET'])
 def health_check():
     """

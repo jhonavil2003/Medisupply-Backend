@@ -7,6 +7,7 @@ from src.blueprints.inventory import inventory_bp
 from src.blueprints.websocket import websocket_bp
 from src.blueprints.routes import routes_bp, vehicles_bp
 from src.blueprints.cart import cart_bp
+from src.blueprints.visit_routes import visit_routes_bp
 from src.websockets.websocket_manager import init_socketio
 from src.errors.errors import register_error_handlers
 from src.jobs.background_jobs import init_background_jobs, shutdown_background_jobs
@@ -36,6 +37,7 @@ def create_app(config=None):
     app.register_blueprint(routes_bp)
     app.register_blueprint(vehicles_bp)
     app.register_blueprint(cart_bp)
+    app.register_blueprint(visit_routes_bp)  # Rutas de visitas a clientes
     
     # Inicializar WebSocket
     socketio = init_socketio(app)

@@ -651,6 +651,91 @@ class SalesServiceClient:
             logger.error(f"Sales service health check failed: {e}")
             return False
 
+    def get_customers_by_ids(self, customer_ids: List[int]) -> Dict[str, Any]:
+        """
+        Obtiene datos de múltiples clientes por sus IDs (batch request).
+        
+        Útil para generar rutas de visitas con información completa de clientes.
+        
+        Args:
+            customer_ids: Lista de IDs de clientes a obtener
+        
+        Returns:
+            Dict con:
+            {
+                'customers': [
+                    {
+                        'id': 1,
+                        'business_name': 'Farmacia San Rafael',
+                        'document_type': 'NIT',
+                        'document_number': '900123456-1',
+                        'customer_type': 'farmacia',
+                        'address': 'Calle 50 #20-30',
+                        'neighborhood': 'Chapinero',
+                        'city': 'Bogota',
+                        'department': 'Cundinamarca',
+                        'latitude': 4.6486259,
+                        'longitude': -74.0628451,
+                        'contact_name': 'Juan Perez',
+                        'contact_phone': '3001234567',
+                        'contact_email': 'juan.perez@sanrafael.com',
+                        'salesperson_id': 2,
+                        'is_active': True
+                    }
+                ],
+                'total': 1,
+                'not_found': [],
+                'requested': 1
+            }
+        
+        Raises:
+            requests.exceptions.RequestException: Error de comunicación
+        
+        Example:
+            >>> client = get_sales_service_client()
+            >>> result = client.get_customers_by_ids([1, 5, 12])
+            >>> print(f"Found {result['total']} customers")
+            >>> for customer in result['customers']:
+            >>>     print(f"  - {customer['business_name']}: {customer['latitude']}, {customer['longitude']}")
+        """
+        if not customer_ids:
+            logger.warning("get_customers_by_ids called with empty customer_ids list")
+            return {
+                'customers': [],
+                'total': 0,
+                'not_found': [],
+                'requested': 0
+            }
+        
+        try:
+            logger.info(f"Fetching batch of {len(customer_ids)} customers from sales-service")
+            
+            response = self._make_request(
+                'POST',
+                '/customers/batch',
+                json_data={'customer_ids': customer_ids}
+            )
+            
+            customers = response.get('customers', [])
+            not_found = response.get('not_found', [])
+            total = response.get('total', len(customers))
+            
+            logger.info(
+                f"Retrieved {total} customers from sales-service "
+                f"({len(not_found)} not found)"
+            )
+            
+            return {
+                'customers': customers,
+                'total': total,
+                'not_found': not_found,
+                'requested': len(customer_ids)
+            }
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to fetch customers from sales-service: {e}")
+            raise
+
 
 # Instancia singleton del cliente
 _client_instance = None
