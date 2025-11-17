@@ -207,9 +207,10 @@ marimo/_lsp/
 __marimo__/
 
 # Seed data files - not to be committed
-seed_data.py
-*/seed_data.py
-**/seed_data.py
+# (Ver sección más abajo para reglas completas de seed y markdown)
+# seed_data.py
+# */seed_data.py
+# **/seed_data.py
 
 # SQL dump files
 catalog.sql
@@ -218,15 +219,49 @@ catalog.sql
 .idea
 
 # Visit system documentation files
-VISITS_AND_FILES_API_DOCUMENTATION.md
-VISITS_API_DOCUMENTATION.md
+# (Ver sección más abajo para reglas completas de markdown)
+# VISITS_AND_FILES_API_DOCUMENTATION.md
+# VISITS_API_DOCUMENTATION.md
 
 # Visit system seed data
-seed_sales_visits.py
-*/seed_sales_visits.py
-**/seed_sales_visits.py
+# (Ver sección más abajo para reglas completas de seed)
+# seed_sales_visits.py
+# */seed_sales_visits.py
+# **/seed_sales_visits.py
 
 # Upload directories
 uploads/
 */uploads/
 **/uploads/
+
+# ============================================
+# Archivos de Documentación y Seed Data
+# ============================================
+
+# Todos los archivos Markdown (.md)
+*.md
+
+# EXCEPCIONES: Documentación crítica de microservicios
+!catalog-service/README.md
+!logistics-service/README.md
+!sales-service/README.md
+
+# Archivos que contengan 'seed' en su nombre
+*seed*
+**/seed*
+*/seed*
+
+# Archivos específicos de seed data (redundante pero explícito)
+seed_data.py
+*/seed_data.py
+**/seed_data.py
+seed_sales_visits.py
+*/seed_sales_visits.py
+**/seed_sales_visits.py
+populate_test_data.py
+*/populate_test_data.py
+**/populate_test_data.py
+
+# Scripts de población de datos
+**/init-seed-data.sh
+init-seed-data.sh

@@ -25,6 +25,10 @@ class Customer(db.Model):
     longitude = db.Column(db.Numeric(11, 8))
     credit_limit = db.Column(db.Numeric(15, 2), default=0.0)
     credit_days = db.Column(db.Integer, default=0)
+    
+    # Salesperson assignment
+    salesperson_id = db.Column(db.Integer, db.ForeignKey('salespersons.id'), nullable=True, index=True)
+    
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -32,13 +36,14 @@ class Customer(db.Model):
     # Relationships
     orders = db.relationship('Order', back_populates='customer', lazy='dynamic')
     visits = db.relationship('Visit', foreign_keys='Visit.customer_id', lazy='dynamic')  # Using foreign_keys for explicit relationship
+    salesperson = db.relationship('Salesperson', foreign_keys=[salesperson_id], backref='assigned_customers', lazy='select')
     
     def __repr__(self):
         return f'<Customer {self.document_number}: {self.business_name}>'
     
     def to_dict(self):
         """Convert customer to dictionary."""
-        return {
+        result = {
             'id': self.id,
             'document_type': self.document_type,
             'document_number': self.document_number,
@@ -57,7 +62,23 @@ class Customer(db.Model):
             'longitude': float(self.longitude) if self.longitude else None,
             'credit_limit': float(self.credit_limit) if self.credit_limit else 0.0,
             'credit_days': self.credit_days,
+            'salesperson_id': self.salesperson_id,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        
+        # Include salesperson info if assigned
+        if self.salesperson:
+            result['salesperson'] = {
+                'id': self.salesperson.id,
+                'employee_id': self.salesperson.employee_id,
+                'full_name': self.salesperson.get_full_name(),
+                'email': self.salesperson.email,
+                'phone': self.salesperson.phone,
+                'territory': self.salesperson.territory
+            }
+        else:
+            result['salesperson'] = None
+            
+        return result

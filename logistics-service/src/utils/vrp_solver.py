@@ -606,3 +606,109 @@ class VRPSolver:
     def _time_to_minutes(t: time) -> int:
         """Convierte time a minutos desde medianoche."""
         return t.hour * 60 + t.minute
+    
+    @staticmethod
+    def solve_tsp(
+        distance_matrix: List[List[float]],
+        start_index: int = 0,
+        return_to_start: bool = False
+    ) -> Dict:
+        """
+        Resuelve el Travelling Salesman Problem (TSP) - variante simple de VRP para un solo vehículo.
+        
+        Args:
+            distance_matrix: Matriz de distancias entre ubicaciones
+            start_index: Índice de la ubicación inicial
+            return_to_start: Si debe regresar al punto de inicio
+        
+        Returns:
+            {
+                'sequence': List[int],  # Secuencia óptima de índices
+                'total_distance': float,  # Distancia total en km
+                'total_time': float  # Tiempo total estimado en minutos
+            }
+        """
+        num_locations = len(distance_matrix)
+        
+        if num_locations == 0:
+            return {
+                'sequence': [],
+                'total_distance': 0.0,
+                'total_time': 0.0
+            }
+        
+        if num_locations == 1:
+            return {
+                'sequence': [0],
+                'total_distance': 0.0,
+                'total_time': 0.0
+            }
+        
+        # Crear manager para TSP
+        manager = pywrapcp.RoutingIndexManager(
+            num_locations,
+            1,  # Un solo vehículo
+            start_index
+        )
+        
+        # Crear modelo de routing
+        routing = pywrapcp.RoutingModel(manager)
+        
+        # Definir función de costo (distancia)
+        def distance_callback(from_index, to_index):
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return int(distance_matrix[from_node][to_node] * 100)  # Multiplicar por 100 para precision
+        
+        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+        
+        # Configurar parámetros de búsqueda
+        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+        search_parameters.first_solution_strategy = (
+            routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        )
+        search_parameters.local_search_metaheuristic = (
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        )
+        search_parameters.time_limit.seconds = 10
+        
+        # Resolver
+        solution = routing.SolveWithParameters(search_parameters)
+        
+        if not solution:
+            logger.warning("No se encontró solución TSP, usando orden original")
+            return {
+                'sequence': list(range(num_locations)),
+                'total_distance': sum(distance_matrix[i][i+1] for i in range(num_locations-1)),
+                'total_time': sum(distance_matrix[i][i+1] for i in range(num_locations-1)) * 2  # ~30 km/h
+            }
+        
+        # Extraer secuencia
+        sequence = []
+        total_distance = 0.0
+        index = routing.Start(0)
+        
+        while not routing.IsEnd(index):
+            node = manager.IndexToNode(index)
+            sequence.append(node)
+            previous_index = index
+            index = solution.Value(routing.NextVar(index))
+            if not routing.IsEnd(index):
+                from_node = manager.IndexToNode(previous_index)
+                to_node = manager.IndexToNode(index)
+                total_distance += distance_matrix[from_node][to_node]
+        
+        # Agregar última ubicación si retorna al inicio
+        if return_to_start and len(sequence) > 0:
+            last_node = manager.IndexToNode(index)
+            total_distance += distance_matrix[sequence[-1]][last_node]
+        
+        # Estimar tiempo total (asumiendo 30 km/h promedio)
+        total_time = total_distance * 2  # minutos
+        
+        return {
+            'sequence': sequence,
+            'total_distance': round(total_distance, 2),
+            'total_time': round(total_time, 1)
+        }

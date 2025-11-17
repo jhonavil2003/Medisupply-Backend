@@ -120,7 +120,7 @@ def register_socket_events():
             emit('error', {'message': str(e)})
     
     @socketio.on('subscribe_all_products')
-    def handle_subscribe_all():
+    def handle_subscribe_all(data=None):
         """Suscribir cliente a TODOS los cambios de inventario."""
         try:
             join_room('all_inventory_updates')

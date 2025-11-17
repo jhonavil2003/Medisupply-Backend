@@ -305,3 +305,72 @@ class TestDeleteProduct:
             
             # Verify rollback was called
             mock_rollback.assert_called_once()
+
+    def test_delete_product_execute_integrity_error_soft_delete(self, app, sample_product, mocker):
+        """Test IntegrityError handling during soft delete"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "Some database constraint violation"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = DeleteProduct(product_id=sample_product.id)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute()
+            
+            assert "Cannot deactivate product due to database constraints" in exc_info.value.message
+
+    def test_delete_product_execute_hard_integrity_error_foreign_key(self, app, sample_product, mocker):
+        """Test IntegrityError handling for foreign key constraint during hard delete"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            mock_rollback = mocker.patch('src.session.db.session.rollback')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "FOREIGN KEY constraint failed"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = DeleteProduct(product_id=sample_product.id)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute_hard_delete()
+            
+            assert "Cannot delete product" in exc_info.value.message
+            assert "referenced by other records" in exc_info.value.message
+            mock_rollback.assert_called_once()
+
+    def test_delete_product_execute_hard_integrity_error_generic(self, app, sample_product, mocker):
+        """Test IntegrityError handling for generic constraint during hard delete"""
+        with app.app_context():
+            from sqlalchemy.exc import IntegrityError
+            
+            # Mock db.session.commit to raise IntegrityError
+            mock_commit = mocker.patch('src.session.db.session.commit')
+            
+            class MockOrig:
+                def __str__(self):
+                    return "Some other constraint violation"
+            
+            mock_error = IntegrityError("statement", {}, MockOrig())
+            mock_commit.side_effect = mock_error
+            
+            command = DeleteProduct(product_id=sample_product.id)
+            
+            with pytest.raises(ValidationError) as exc_info:
+                command.execute_hard_delete()
+            
+            assert "Cannot delete product due to database constraints" in exc_info.value.message
