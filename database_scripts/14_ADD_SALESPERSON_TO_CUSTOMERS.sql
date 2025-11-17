@@ -1,9 +1,3 @@
--- ============================================================================
--- Migration: Add salesperson_id to customers table
--- Description: Permite asignar un vendedor a cada cliente
--- Date: 2025-11-16
--- ============================================================================
-
 -- Add salesperson_id column to customers table
 ALTER TABLE customers 
 ADD COLUMN salesperson_id INTEGER;
