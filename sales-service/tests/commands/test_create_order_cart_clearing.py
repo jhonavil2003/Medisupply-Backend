@@ -117,6 +117,10 @@ class TestCreateOrderCartClearing:
             ]
             
             with patch('src.commands.create_order.requests.post') as mock_post:
+                # Simular respuesta exitosa para reserva de inventario
+                mock_post.return_value.status_code = 200
+                mock_post.return_value.json.return_value = {'items_reserved': []}
+                
                 command = CreateOrder(order_data)
                 result = command.execute()
                 
@@ -124,8 +128,12 @@ class TestCreateOrderCartClearing:
                 assert 'id' in result
                 assert result['status'] == 'pending'
                 
-                # Verificar que NO se intentó limpiar carrito
-                assert not mock_post.called
+                # Verificar que SOLO se llamó para reservar inventario, NO para limpiar carrito
+                # Debe haber 1 llamada (reserve inventory), NO 2 (reserve + clear cart)
+                assert mock_post.call_count == 1
+                # Verificar que la llamada fue para reservar inventario
+                call_url = mock_post.call_args[0][0]
+                assert '/inventory/reserve-for-order' in call_url
     
     def test_create_order_succeeds_even_if_cart_clearing_fails_timeout(self, db, sample_customer):
         """
@@ -298,11 +306,17 @@ class TestCreateOrderCartClearing:
             ]
             
             with patch('src.commands.create_order.requests.post') as mock_post:
+                mock_post.return_value.status_code = 200
+                mock_post.return_value.json.return_value = {'items_reserved': []}
+                
                 command = CreateOrder(order_data)
                 result = command.execute()
                 
-                # Verificar que NO se intentó limpiar (falta session_id)
-                assert not mock_post.called
+                # Verificar que se llama a reserve-for-order pero NO a cart/clear
+                assert mock_post.call_count == 1
+                call_url = mock_post.call_args[0][0]
+                assert '/inventory/reserve-for-order' in call_url
+                assert '/cart/clear' not in call_url
     
     def test_create_order_with_only_session_id_skips_clearing(self, db, sample_customer):
         """
@@ -335,8 +349,14 @@ class TestCreateOrderCartClearing:
             ]
             
             with patch('src.commands.create_order.requests.post') as mock_post:
+                mock_post.return_value.status_code = 200
+                mock_post.return_value.json.return_value = {'items_reserved': []}
+                
                 command = CreateOrder(order_data)
                 result = command.execute()
                 
-                # Verificar que NO se intentó limpiar (falta user_id)
-                assert not mock_post.called
+                # Verificar que se llama a reserve-for-order pero NO a cart/clear
+                assert mock_post.call_count == 1
+                call_url = mock_post.call_args[0][0]
+                assert '/inventory/reserve-for-order' in call_url
+                assert '/cart/clear' not in call_url
