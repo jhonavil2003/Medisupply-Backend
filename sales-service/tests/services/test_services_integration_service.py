@@ -43,12 +43,16 @@ class TestIntegrationService:
         """Test successful stock check."""
         mock_response = Mock()
         mock_response.status_code = 200
+        # Simular respuesta del endpoint de stock con las claves correctas
+        # total_available_for_purchase ya incluye la resta de reservas
         mock_response.json.return_value = {
             'product_sku': 'JER-001',
-            'total_available': 100,
+            'total_available_for_purchase': 100,  # Este ya es el valor disponible para venta
+            'total_physical_stock': 150,  # Stock físico total
+            'total_reserved_in_carts': 50,  # Reservas temporales
             'distribution_centers': [{
                 'distribution_center_code': 'DC-001',
-                'quantity_available': 100
+                'available_for_purchase': 100  # Stock disponible en este centro
             }]
         }
         mock_get.return_value = mock_response
@@ -65,17 +69,20 @@ class TestIntegrationService:
         """Test stock check with preferred distribution center."""
         mock_response = Mock()
         mock_response.status_code = 200
+        # Simular respuesta con valores disponibles después de restar reservas
         mock_response.json.return_value = {
             'product_sku': 'JER-001',
-            'total_available': 100,
+            'total_available_for_purchase': 100,  # Ya incluye la resta de reservas
+            'total_physical_stock': 150,
+            'total_reserved_in_carts': 50,
             'distribution_centers': [
                 {
                     'distribution_center_code': 'DC-001',
-                    'quantity_available': 50
+                    'available_for_purchase': 50  # Stock disponible en DC-001
                 },
                 {
                     'distribution_center_code': 'DC-002',
-                    'quantity_available': 50
+                    'available_for_purchase': 50  # Stock disponible en DC-002
                 }
             ]
         }

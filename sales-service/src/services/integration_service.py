@@ -73,6 +73,9 @@ class IntegrationService:
         """
         Verifica disponibilidad de stock en logistics-service.
         
+        IMPORTANTE: Usa el endpoint /cart/stock/realtime que considera las reservas
+        activas de carrito, evitando sobreventa en escenarios de concurrencia.
+        
         Args:
             product_sku (str): SKU del producto
             quantity (int): Cantidad requerida
@@ -86,7 +89,8 @@ class IntegrationService:
             ValidationError: Si hay stock insuficiente
         """
         try:
-            url = f"{self.logistics_service_url}/inventory/stock-levels"
+            # Usar endpoint de stock en tiempo real que considera reservas de carrito
+            url = f"{self.logistics_service_url}/cart/stock/realtime"
             params = {'product_sku': product_sku}
             
             if distribution_center_code:
@@ -102,17 +106,19 @@ class IntegrationService:
             
             stock_data = response.json()
             
-            # Calcular stock total disponible
-            total_available = stock_data.get('total_available', 0)
+            # Obtener stock real disponible (considerando reservas de carrito)
+            total_available = stock_data.get('total_available_for_purchase', 0)
             
             # Verificar si hay suficiente stock
             if total_available < quantity:
                 raise ValidationError(
-                    f"Insufficient stock for product '{product_sku}'. Required: {quantity}, Available: {total_available}",
+                    f"Insufficient stock for product '{product_sku}'. Required: {quantity}, Available for purchase: {total_available}",
                     payload={
                         'product_sku': product_sku,
                         'required_quantity': quantity,
-                        'available_quantity': total_available,
+                        'available_for_purchase': total_available,
+                        'physical_stock': stock_data.get('total_physical_stock', 0),
+                        'reserved_in_carts': stock_data.get('total_reserved_in_carts', 0),
                         'distribution_centers': stock_data.get('distribution_centers', [])
                     }
                 )
@@ -125,19 +131,20 @@ class IntegrationService:
                 # Intentar usar el centro preferido
                 for center in distribution_centers:
                     if center.get('distribution_center_code') == distribution_center_code:
-                        if center.get('quantity_available', 0) >= quantity:
+                        # Usar available_for_purchase en lugar de quantity_available
+                        if center.get('available_for_purchase', 0) >= quantity:
                             selected_center = center
                             break
             
             if not selected_center and distribution_centers:
-                # Seleccionar centro con mayor stock
+                # Seleccionar centro con mayor stock disponible para compra
                 distribution_centers_sorted = sorted(
                     distribution_centers,
-                    key=lambda x: x.get('quantity_available', 0),
+                    key=lambda x: x.get('available_for_purchase', 0),
                     reverse=True
                 )
                 for center in distribution_centers_sorted:
-                    if center.get('quantity_available', 0) >= quantity:
+                    if center.get('available_for_purchase', 0) >= quantity:
                         selected_center = center
                         break
             

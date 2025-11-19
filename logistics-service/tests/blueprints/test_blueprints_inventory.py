@@ -10,7 +10,11 @@ class TestInventoryStockLevelsEndpoint:
         assert response.status_code == 200
         data = json.loads(response.data)
         assert data['product_sku'] == 'JER-001'
-        assert data['total_available'] == 150
+        # total_available = quantity_available - quantity_reserved
+        # JER-001: (100 + 50) - (10 + 5) = 150 - 15 = 135
+        assert data['total_available'] == 135
+        assert data['total_physical'] == 150  # quantity_available sin restar reservas
+        assert data['total_reserved'] == 15
     
     def test_get_stock_levels_multiple_products(self, client, multiple_inventory_items):
         response = client.get('/inventory/stock-levels?product_skus=JER-001,VAC-001')

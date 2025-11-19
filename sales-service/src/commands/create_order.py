@@ -1,11 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
+import requests
+import os
+import logging
 from src.models.order import Order
 from src.models.order_item import OrderItem
 from src.models.customer import Customer
 from src.session import db
 from src.errors.errors import ValidationError, NotFoundError
 from src.services.integration_service import IntegrationService
+
+logger = logging.getLogger(__name__)
 
 
 class CreateOrder:
@@ -40,6 +45,12 @@ class CreateOrder:
         self._create_order_items(order, validated_items)
         
         db.session.commit()
+        
+        # Reservar inventario permanentemente para la orden
+        self._reserve_inventory_for_order(order, validated_items)
+        
+        # Limpiar reservas de carrito después de confirmar la orden
+        self._clear_cart_reservations()
         
         return order.to_dict(include_items=True, include_customer=True)
     
@@ -208,3 +219,127 @@ class CreateOrder:
                 return None
         except ValueError:
             return None
+    
+    def _reserve_inventory_for_order(self, order, validated_items):
+        """
+        Reserva inventario permanentemente cuando se confirma una orden.
+        
+        Actualiza inventory.quantity_reserved en logistics-service para
+        reflejar que estos productos están comprometidos con la orden.
+        
+        Diferencia con cart_reservations:
+        - cart_reservations: Reservas temporales (15 min) mientras el usuario navega
+        - inventory.quantity_reserved: Reservas permanentes de órdenes confirmadas
+        """
+        try:
+            logistics_url = os.getenv('LOGISTICS_SERVICE_URL', 'http://localhost:3002')
+            url = f"{logistics_url}/inventory/reserve-for-order"
+            
+            # Preparar items para la reserva
+            items_to_reserve = []
+            for item in validated_items:
+                items_to_reserve.append({
+                    'product_sku': item['product_sku'],
+                    'quantity': item['quantity'],
+                    'distribution_center_id': item.get('distribution_center_id', 1)
+                })
+            
+            response = requests.post(
+                url,
+                json={
+                    'order_id': order.order_number,
+                    'items': items_to_reserve
+                },
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                items_reserved = len(result.get('items_reserved', []))
+                logger.info(
+                    f"✅ Inventario reservado exitosamente para orden {order.order_number}: "
+                    f"{items_reserved} items"
+                )
+            else:
+                # Si falla la reserva, loguear pero NO fallar la orden
+                # La orden ya está creada y confirmada
+                logger.error(
+                    f"❌ Error reservando inventario (status {response.status_code}): "
+                    f"Orden {order.order_number}. Response: {response.text}"
+                )
+        
+        except requests.exceptions.Timeout:
+            logger.error(
+                f"❌ Timeout al reservar inventario para orden {order.order_number}. "
+                "La orden fue creada pero el inventario no se actualizó."
+            )
+        
+        except requests.exceptions.ConnectionError:
+            logger.error(
+                f"❌ No se pudo conectar al servicio de logística para reservar inventario. "
+                f"Orden {order.order_number} creada pero inventario no actualizado."
+            )
+        
+        except Exception as e:
+            logger.error(
+                f"❌ Error inesperado al reservar inventario para orden {order.order_number}: {str(e)}"
+            )
+    
+    def _clear_cart_reservations(self):
+        """
+        Limpia las reservas de carrito del usuario después de crear la orden.
+        
+        Esto evita que el stock quede bloqueado por reservas que ya fueron
+        convertidas en una orden confirmada.
+        """
+        user_id = self.data.get('user_id')
+        session_id = self.data.get('session_id')
+        
+        # Solo limpiar si se proporcionaron user_id y session_id
+        if not user_id or not session_id:
+            logger.info("No se proporcionó user_id/session_id, omitiendo limpieza de carrito")
+            return
+        
+        try:
+            logistics_url = os.getenv('LOGISTICS_SERVICE_URL', 'http://localhost:3002')
+            url = f"{logistics_url}/cart/clear"
+            
+            response = requests.post(
+                url,
+                json={
+                    'user_id': user_id,
+                    'session_id': session_id
+                },
+                timeout=3
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                cleared_count = result.get('cleared_count', 0)
+                logger.info(
+                    f"✅ Carrito limpiado exitosamente: {cleared_count} reservas liberadas "
+                    f"para user_id={user_id}, session_id={session_id}"
+                )
+            else:
+                logger.warning(
+                    f"⚠️ No se pudo limpiar carrito (status {response.status_code}): "
+                    f"user_id={user_id}, session_id={session_id}"
+                )
+        
+        except requests.exceptions.Timeout:
+            logger.warning(
+                f"⚠️ Timeout al limpiar carrito para user_id={user_id}. "
+                "Las reservas expirarán automáticamente en 15 minutos."
+            )
+        
+        except requests.exceptions.ConnectionError:
+            logger.warning(
+                f"⚠️ No se pudo conectar al servicio de logística para limpiar carrito. "
+                f"user_id={user_id}. Las reservas expirarán automáticamente."
+            )
+        
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Error inesperado al limpiar carrito: {str(e)}. "
+                "Las reservas expirarán automáticamente en 15 minutos."
+            )

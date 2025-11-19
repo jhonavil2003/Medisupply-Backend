@@ -8,7 +8,10 @@ class TestGetStockLevelsCommand:
         result = command.execute()
         
         assert result['product_sku'] == 'JER-001'
-        assert result['total_available'] == 150
+        # total_available = quantity_available - quantity_reserved
+        # JER-001: (100 + 50) - (10 + 5) = 135
+        assert result['total_available'] == 135
+        assert result['total_physical'] == 150
         assert len(result['distribution_centers']) == 2
     
     def test_get_stock_multiple_products(self, db, multiple_inventory_items):
@@ -26,7 +29,11 @@ class TestGetStockLevelsCommand:
         result = command.execute()
         
         assert len(result['distribution_centers']) == 1
-        assert result['distribution_centers'][0]['quantity_available'] == 100
+        # quantity_available ahora es "available for sale" (físico - reservado)
+        # Centro 1 tiene: quantity_available=100, quantity_reserved=10
+        # Entonces: 100 - 10 = 90 disponible para venta
+        assert result['distribution_centers'][0]['quantity_available'] == 90
+        assert result['distribution_centers'][0]['quantity_physical'] == 100
     
     def test_get_stock_only_available(self, db, multiple_inventory_items):
         command = GetStockLevels(product_skus=['JER-001', 'VAC-001', 'GUANTE-001'], only_available=True)
@@ -61,7 +68,9 @@ class TestGetStockLevelsCommand:
         result = command.execute()
         
         assert result['product_sku'] == 'JER-001'
-        assert result['total_available'] == 150
+        # total_available = quantity_available - quantity_reserved
+        assert result['total_available'] == 135
+        assert result['total_physical'] == 150
     
     def test_get_stock_includes_center_info(self, db, sample_inventory):
         command = GetStockLevels(product_sku='JER-001')
