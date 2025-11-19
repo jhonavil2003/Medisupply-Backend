@@ -46,6 +46,9 @@ class CreateOrder:
         
         db.session.commit()
         
+        # Reservar inventario permanentemente para la orden
+        self._reserve_inventory_for_order(order, validated_items)
+        
         # Limpiar reservas de carrito después de confirmar la orden
         self._clear_cart_reservations()
         
@@ -216,6 +219,71 @@ class CreateOrder:
                 return None
         except ValueError:
             return None
+    
+    def _reserve_inventory_for_order(self, order, validated_items):
+        """
+        Reserva inventario permanentemente cuando se confirma una orden.
+        
+        Actualiza inventory.quantity_reserved en logistics-service para
+        reflejar que estos productos están comprometidos con la orden.
+        
+        Diferencia con cart_reservations:
+        - cart_reservations: Reservas temporales (15 min) mientras el usuario navega
+        - inventory.quantity_reserved: Reservas permanentes de órdenes confirmadas
+        """
+        try:
+            logistics_url = os.getenv('LOGISTICS_SERVICE_URL', 'http://localhost:3002')
+            url = f"{logistics_url}/inventory/reserve-for-order"
+            
+            # Preparar items para la reserva
+            items_to_reserve = []
+            for item in validated_items:
+                items_to_reserve.append({
+                    'product_sku': item['product_sku'],
+                    'quantity': item['quantity'],
+                    'distribution_center_id': item.get('distribution_center_id', 1)
+                })
+            
+            response = requests.post(
+                url,
+                json={
+                    'order_id': order.order_number,
+                    'items': items_to_reserve
+                },
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                items_reserved = len(result.get('items_reserved', []))
+                logger.info(
+                    f"✅ Inventario reservado exitosamente para orden {order.order_number}: "
+                    f"{items_reserved} items"
+                )
+            else:
+                # Si falla la reserva, loguear pero NO fallar la orden
+                # La orden ya está creada y confirmada
+                logger.error(
+                    f"❌ Error reservando inventario (status {response.status_code}): "
+                    f"Orden {order.order_number}. Response: {response.text}"
+                )
+        
+        except requests.exceptions.Timeout:
+            logger.error(
+                f"❌ Timeout al reservar inventario para orden {order.order_number}. "
+                "La orden fue creada pero el inventario no se actualizó."
+            )
+        
+        except requests.exceptions.ConnectionError:
+            logger.error(
+                f"❌ No se pudo conectar al servicio de logística para reservar inventario. "
+                f"Orden {order.order_number} creada pero inventario no actualizado."
+            )
+        
+        except Exception as e:
+            logger.error(
+                f"❌ Error inesperado al reservar inventario para orden {order.order_number}: {str(e)}"
+            )
     
     def _clear_cart_reservations(self):
         """

@@ -59,20 +59,27 @@ class GetStockLevels:
             }
         
         product_sku = inventory_items[0].product_sku
-        total_available = sum(item.quantity_available for item in inventory_items)
+        total_quantity_available = sum(item.quantity_available for item in inventory_items)
         total_reserved = sum(item.quantity_reserved for item in inventory_items)
         total_in_transit = sum(item.quantity_in_transit for item in inventory_items)
         
+        # Stock realmente disponible para venta = quantity_available - quantity_reserved
+        total_available_for_sale = total_quantity_available - total_reserved
+        
         centers = []
         for item in inventory_items:
+            # Stock disponible para venta en este centro
+            available_for_sale = item.quantity_available - item.quantity_reserved
+            
             center_data = {
                 'distribution_center_id': item.distribution_center_id,
                 'distribution_center_code': item.distribution_center.code,
                 'distribution_center_name': item.distribution_center.name,
                 'city': item.distribution_center.city,
-                'quantity_available': item.quantity_available,
+                'quantity_available': available_for_sale,  # Stock disponible para venta
+                'quantity_physical': item.quantity_available,  # Stock físico en almacén
                 'is_low_stock': item.is_low_stock,
-                'is_out_of_stock': item.is_out_of_stock,
+                'is_out_of_stock': available_for_sale <= 0,  # Sin stock si no hay disponible para venta
             }
             
             if self.include_reserved:
@@ -85,7 +92,8 @@ class GetStockLevels:
         
         return {
             'product_sku': product_sku,
-            'total_available': total_available,
+            'total_available': total_available_for_sale,  # Stock disponible para venta
+            'total_physical': total_quantity_available,  # Stock físico total
             'total_reserved': total_reserved if self.include_reserved else None,
             'total_in_transit': total_in_transit if self.include_in_transit else None,
             'distribution_centers': centers
@@ -101,12 +109,17 @@ class GetStockLevels:
                 products_dict[sku] = {
                     'product_sku': sku,
                     'total_available': 0,
+                    'total_physical': 0,
                     'total_reserved': 0,
                     'total_in_transit': 0,
                     'distribution_centers': []
                 }
             
-            products_dict[sku]['total_available'] += item.quantity_available
+            # Stock disponible para venta = quantity_available - quantity_reserved
+            available_for_sale = item.quantity_available - item.quantity_reserved
+            
+            products_dict[sku]['total_available'] += available_for_sale
+            products_dict[sku]['total_physical'] += item.quantity_available
             products_dict[sku]['total_reserved'] += item.quantity_reserved
             products_dict[sku]['total_in_transit'] += item.quantity_in_transit
             
@@ -115,9 +128,10 @@ class GetStockLevels:
                 'distribution_center_code': item.distribution_center.code,
                 'distribution_center_name': item.distribution_center.name,
                 'city': item.distribution_center.city,
-                'quantity_available': item.quantity_available,
+                'quantity_available': available_for_sale,  # Stock disponible para venta
+                'quantity_physical': item.quantity_available,  # Stock físico en almacén
                 'is_low_stock': item.is_low_stock,
-                'is_out_of_stock': item.is_out_of_stock,
+                'is_out_of_stock': available_for_sale <= 0,
             }
             
             if self.include_reserved:
