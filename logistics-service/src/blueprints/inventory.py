@@ -470,6 +470,180 @@ def update_inventory(product_sku):
         raise ApiError(f"Error al procesar la solicitud: {str(e)}", status_code=500)
 
 
+@inventory_bp.route('/reserve-for-order', methods=['POST'])
+def reserve_for_order():
+    """
+    POST /inventory/reserve-for-order
+    
+    Reserva inventario para una orden confirmada.
+    Actualiza quantity_reserved en la tabla inventory para todos los items de la orden.
+    
+    Este endpoint debe ser llamado inmediatamente después de crear una orden
+    para asegurar que el inventario refleja las cantidades comprometidas.
+    
+    Body (JSON):
+    {
+        "order_id": "ORD-2025-001",
+        "items": [
+            {
+                "product_sku": "JER-001",
+                "quantity": 5,
+                "distribution_center_id": 1
+            },
+            {
+                "product_sku": "MED-002",
+                "quantity": 10,
+                "distribution_center_id": 1
+            }
+        ]
+    }
+    
+    Returns:
+    - 200: Inventario reservado exitosamente
+    - 400: Parámetros inválidos
+    - 404: Producto no encontrado en inventario
+    - 409: Stock insuficiente
+    - 500: Error del servidor
+    
+    Response:
+    {
+        "success": true,
+        "order_id": "ORD-2025-001",
+        "items_reserved": [
+            {
+                "product_sku": "JER-001",
+                "quantity_reserved": 5,
+                "distribution_center_id": 1,
+                "quantity_reserved_before": 100,
+                "quantity_reserved_after": 105,
+                "quantity_available": 495
+            },
+            ...
+        ],
+        "message": "Inventario reservado exitosamente para 2 items"
+    }
+    """
+    from src.commands.reserve_inventory_for_order import ReserveInventoryForOrder
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            raise ValidationError("Request body is required")
+        
+        # Validar campos requeridos
+        if 'order_id' not in data:
+            raise ValidationError("order_id is required")
+        
+        if 'items' not in data:
+            raise ValidationError("items is required")
+        
+        # Ejecutar comando
+        command = ReserveInventoryForOrder(
+            order_id=data['order_id'],
+            items=data['items']
+        )
+        
+        result = command.execute()
+        
+        return jsonify(result), 200
+        
+    except ValidationError as e:
+        return jsonify({
+            'success': False,
+            'error': 'VALIDATION_ERROR',
+            'message': str(e)
+        }), 400
+        
+    except NotFoundError as e:
+        return jsonify({
+            'success': False,
+            'error': 'NOT_FOUND',
+            'message': str(e)
+        }), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': 'SERVER_ERROR',
+            'message': str(e)
+        }), 500
+
+
+@inventory_bp.route('/release-for-order', methods=['POST'])
+def release_for_order():
+    """
+    POST /inventory/release-for-order
+    
+    Libera inventario reservado cuando se cancela una orden.
+    Reduce quantity_reserved en la tabla inventory para todos los items.
+    
+    Body (JSON):
+    {
+        "order_id": "ORD-2025-001",
+        "items": [
+            {
+                "product_sku": "JER-001",
+                "quantity": 5,
+                "distribution_center_id": 1
+            },
+            ...
+        ]
+    }
+    
+    Returns:
+    - 200: Inventario liberado exitosamente
+    - 400: Parámetros inválidos
+    - 404: Producto no encontrado
+    - 500: Error del servidor
+    """
+    from src.commands.reserve_inventory_for_order import ReleaseInventoryForOrder
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            raise ValidationError("Request body is required")
+        
+        if 'order_id' not in data:
+            raise ValidationError("order_id is required")
+        
+        if 'items' not in data:
+            raise ValidationError("items is required")
+        
+        command = ReleaseInventoryForOrder(
+            order_id=data['order_id'],
+            items=data['items']
+        )
+        
+        result = command.execute()
+        
+        return jsonify(result), 200
+        
+    except ValidationError as e:
+        return jsonify({
+            'success': False,
+            'error': 'VALIDATION_ERROR',
+            'message': str(e)
+        }), 400
+        
+    except NotFoundError as e:
+        return jsonify({
+            'success': False,
+            'error': 'NOT_FOUND',
+            'message': str(e)
+        }), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': 'SERVER_ERROR',
+            'message': str(e)
+        }), 500
+
+
 # Health check endpoint
 @inventory_bp.route('/health', methods=['GET'])
 def health_check():
