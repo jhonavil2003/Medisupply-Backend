@@ -1,11 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
+import requests
+import os
+import logging
 from src.models.order import Order
 from src.models.order_item import OrderItem
 from src.models.customer import Customer
 from src.session import db
 from src.errors.errors import ValidationError, NotFoundError
 from src.services.integration_service import IntegrationService
+
+logger = logging.getLogger(__name__)
 
 
 class CreateOrder:
@@ -40,6 +45,9 @@ class CreateOrder:
         self._create_order_items(order, validated_items)
         
         db.session.commit()
+        
+        # Limpiar reservas de carrito después de confirmar la orden
+        self._clear_cart_reservations()
         
         return order.to_dict(include_items=True, include_customer=True)
     
@@ -208,3 +216,62 @@ class CreateOrder:
                 return None
         except ValueError:
             return None
+    
+    def _clear_cart_reservations(self):
+        """
+        Limpia las reservas de carrito del usuario después de crear la orden.
+        
+        Esto evita que el stock quede bloqueado por reservas que ya fueron
+        convertidas en una orden confirmada.
+        """
+        user_id = self.data.get('user_id')
+        session_id = self.data.get('session_id')
+        
+        # Solo limpiar si se proporcionaron user_id y session_id
+        if not user_id or not session_id:
+            logger.info("No se proporcionó user_id/session_id, omitiendo limpieza de carrito")
+            return
+        
+        try:
+            logistics_url = os.getenv('LOGISTICS_SERVICE_URL', 'http://localhost:3002')
+            url = f"{logistics_url}/cart/clear"
+            
+            response = requests.post(
+                url,
+                json={
+                    'user_id': user_id,
+                    'session_id': session_id
+                },
+                timeout=3
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                cleared_count = result.get('cleared_count', 0)
+                logger.info(
+                    f"✅ Carrito limpiado exitosamente: {cleared_count} reservas liberadas "
+                    f"para user_id={user_id}, session_id={session_id}"
+                )
+            else:
+                logger.warning(
+                    f"⚠️ No se pudo limpiar carrito (status {response.status_code}): "
+                    f"user_id={user_id}, session_id={session_id}"
+                )
+        
+        except requests.exceptions.Timeout:
+            logger.warning(
+                f"⚠️ Timeout al limpiar carrito para user_id={user_id}. "
+                "Las reservas expirarán automáticamente en 15 minutos."
+            )
+        
+        except requests.exceptions.ConnectionError:
+            logger.warning(
+                f"⚠️ No se pudo conectar al servicio de logística para limpiar carrito. "
+                f"user_id={user_id}. Las reservas expirarán automáticamente."
+            )
+        
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Error inesperado al limpiar carrito: {str(e)}. "
+                "Las reservas expirarán automáticamente en 15 minutos."
+            )
