@@ -19,6 +19,7 @@ class Salesperson(db.Model):
     territory = db.Column(db.String(100), nullable=True)
     hire_date = db.Column(db.Date, nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True, index=True)
+    role = db.Column(db.String(50), nullable=False, default='salesperson', index=True)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
@@ -29,7 +30,7 @@ class Salesperson(db.Model):
 
     def __init__(self, employee_id: str = None, first_name: str = None, last_name: str = None, 
                  email: str = None, phone: str = None, territory: str = None, 
-                 hire_date: date = None, is_active: bool = True):
+                 hire_date: date = None, is_active: bool = True, role: str = 'salesperson'):
         """Constructor similar a Java"""
         self.employee_id = employee_id
         self.first_name = first_name
@@ -39,6 +40,7 @@ class Salesperson(db.Model):
         self.territory = territory
         self.hire_date = hire_date
         self.is_active = is_active
+        self.role = role
 
     def __repr__(self):
         return f"<Salesperson(id={self.id}, employee_id='{self.employee_id}', name='{self.get_full_name()}')>"
@@ -101,6 +103,12 @@ class Salesperson(db.Model):
     
     def set_is_active(self, is_active: bool):
         self.is_active = is_active
+
+    def get_role(self) -> str:
+        return self.role
+
+    def set_role(self, role: str):
+        self.role = role
     
     def get_visits(self) -> List['Visit']:
         return list(self.visits)
@@ -134,6 +142,7 @@ class Salesperson(db.Model):
             'territory': self.territory,
             'hire_date': self.hire_date.isoformat() if self.hire_date else None,
             'is_active': self.is_active,
+            'role': self.role,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
