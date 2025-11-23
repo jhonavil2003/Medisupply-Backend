@@ -37,7 +37,7 @@ class VisitFileUploadRequest(BaseModel):
     
     visit_id: int = Field(..., description="ID de la visita", gt=0)
     file_name: str = Field(..., description="Nombre del archivo", max_length=255)
-    file_size: Optional[int] = Field(None, description="Tamaño del archivo en bytes", gt=0)
+    file_size: Optional[int] = Field(None, description="Tamaño del archivo en bytes", ge=0)
     mime_type: Optional[str] = Field(None, description="Tipo MIME del archivo")
     
     class Config:
@@ -56,12 +56,13 @@ class VisitFileUploadRequest(BaseModel):
         if not v or v.strip() == '':
             raise ValueError('file_name no puede estar vacío')
         
-        # Validar extensión
+        # Validar extensión (ahora incluye videos)
         allowed_extensions = [
             '.pdf', '.doc', '.docx', '.txt', '.rtf',  # Documentos
             '.jpg', '.jpeg', '.png', '.gif', '.bmp',  # Imágenes
             '.xlsx', '.xls', '.csv',                  # Hojas de cálculo
-            '.zip', '.rar'                            # Archivos comprimidos
+            '.zip', '.rar',                           # Archivos comprimidos
+            '.mp4', '.avi', '.mov', '.mkv'           # Videos
         ]
         
         if not any(v.lower().endswith(ext) for ext in allowed_extensions):
@@ -71,10 +72,64 @@ class VisitFileUploadRequest(BaseModel):
     
     @validator('file_size')
     def validate_file_size(cls, v):  # noqa: N805 - Pydantic validator uses cls by convention
-        """Validar tamaño de archivo (máximo 10MB)"""
-        if v and v > 10 * 1024 * 1024:  # 10MB
-            raise ValueError('El archivo no puede superar 10MB')
+        """Validar tamaño de archivo (máximo 10MB para docs, 50MB para videos)"""
+        if v and v > 50 * 1024 * 1024:  # 50MB
+            raise ValueError('El archivo no puede superar 50MB')
         return v
+
+
+class VisitFileUrlRequest(BaseModel):
+    """DTO para registrar URL de archivo externo (S3)"""
+    
+    file_url: str = Field(..., description="URL completa del archivo (S3, etc.)")
+    file_name: str = Field(..., description="Nombre del archivo", max_length=255)
+    file_size: Optional[int] = Field(None, description="Tamaño en bytes", gt=0)
+    mime_type: Optional[str] = Field(None, description="Tipo MIME del archivo")
+    
+    @validator('file_url')
+    def validate_url(cls, v):  # noqa: N805
+        """Validar que la URL use HTTPS"""
+        if not v or not v.strip():
+            raise ValueError('file_url no puede estar vacío')
+        if not v.startswith('https://'):
+            raise ValueError('file_url debe usar HTTPS')
+        return v.strip()
+    
+    @validator('file_name')
+    def validate_file_name(cls, v):  # noqa: N805
+        """Validar nombre de archivo"""
+        if not v or v.strip() == '':
+            raise ValueError('file_name no puede estar vacío')
+        
+        allowed_extensions = [
+            '.pdf', '.doc', '.docx', '.txt', '.rtf',
+            '.jpg', '.jpeg', '.png', '.gif', '.bmp',
+            '.xlsx', '.xls', '.csv',
+            '.zip', '.rar',
+            '.mp4', '.avi', '.mov', '.mkv'
+        ]
+        
+        if not any(v.lower().endswith(ext) for ext in allowed_extensions):
+            raise ValueError(f'Extensión no permitida. Extensiones válidas: {allowed_extensions}')
+        
+        return v.strip()
+    
+    @validator('file_size')
+    def validate_file_size(cls, v):  # noqa: N805
+        """Validar tamaño de archivo (máximo 50MB)"""
+        if v and v > 50 * 1024 * 1024:
+            raise ValueError('El archivo no puede superar 50MB')
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "file_url": "https://medisupply-videos.s3.us-east-1.amazonaws.com/videos/2025/11/23/abc123_video.mp4",
+                "file_name": "video_visita.mp4",
+                "file_size": 15728640,
+                "mime_type": "video/mp4"
+            }
+        }
 
 
 class VisitFileListResponse(BaseModel):
