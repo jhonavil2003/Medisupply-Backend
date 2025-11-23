@@ -204,15 +204,28 @@ class VideoProcessorService:
             parsed_url = urlparse(url)
             
             # Extraer bucket y key
-            # Formato: https://bucket-name.s3.region.amazonaws.com/path/to/file.mp4
-            if parsed_url.netloc.endswith('.s3.amazonaws.com'):
-                # Formato: bucket-name.s3.region.amazonaws.com
-                bucket_name = parsed_url.netloc.split('.')[0]
-            else:
-                bucket_name = Config.AWS_BUCKET_NAME
+            # Soporta múltiples formatos:
+            # - https://bucket-name.s3.region.amazonaws.com/path/to/file.mp4
+            # - https://bucket-name.s3.amazonaws.com/path/to/file.mp4
+            # - https://s3.region.amazonaws.com/bucket-name/path/to/file.mp4
+            netloc = parsed_url.netloc
             
-            # Key es el path sin el leading slash
-            key = parsed_url.path.strip('/')
+            if '.s3.' in netloc and netloc.endswith('.amazonaws.com'):
+                # Formato: bucket-name.s3[.region].amazonaws.com
+                bucket_name = netloc.split('.s3.')[0]
+            elif netloc.startswith('s3.') or netloc.startswith('s3-'):
+                # Formato: s3.region.amazonaws.com/bucket-name/key
+                # El bucket está en el path
+                path_parts = parsed_url.path.strip('/').split('/', 1)
+                bucket_name = path_parts[0] if path_parts else Config.AWS_BUCKET_NAME
+                key = path_parts[1] if len(path_parts) > 1 else ''
+            else:
+                # Fallback: usar variable de entorno
+                bucket_name = Config.AWS_BUCKET_NAME or 'medisupply-videos'
+            
+            # Key es el path sin el leading slash (si no fue extraído arriba)
+            if 'key' not in locals():
+                key = parsed_url.path.strip('/')
             
             logger.info(f"   S3 Bucket: {bucket_name}")
             logger.info(f"   S3 Key: {key}")
