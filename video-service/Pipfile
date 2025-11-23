@@ -1,0 +1,32 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "==2.31.0"
+opencv-python = "==4.8.1.78"
+pillow = "==10.1.0"
+langchain-google-genai = "==2.0.5"
+google-generativeai = "==0.8.3"
+flask = "==3.0.0"
+flask-cors = "==4.0.0"
+boto3 = "*"
+mcp = "*"
+langchain-mcp-adapters = "*"
+httpx = "*"
+langchain = "*"
+langchain-core = "*"
+uv = "*"
+uvicorn = "*"
+asgiref = "*"
+numpy = "<2.0"
+
+[dev-packages]
+pytest = "==8.4.2"
+pytest-cov = "==7.0.0"
+pytest-mock = "==3.12.0"
+pytest-asyncio = "==0.21.1"
+
+[requires]
+python_version = "3.12"
