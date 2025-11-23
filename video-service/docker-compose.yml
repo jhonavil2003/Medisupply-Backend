@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  video-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medisupply-video-service
+    ports:
+      - "3004:3004"
+    environment:
+      FLASK_ENV: development
+      SERVICE_PORT: 3004
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      RAG_API_URL: http://35.239.208.254:8001
+      RAG_MCP_SERVER_PATH: /app/mcp_server/rag_server.py
+      PYTHONPATH: /app
+      LOG_LEVEL: INFO
+    volumes:
+      - ./src:/app/src
+      - ./uploads:/app/uploads
+      - ../202515-MISW4411-Agent-Backend-Grupo05/app/mcp_server:/app/mcp_server:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

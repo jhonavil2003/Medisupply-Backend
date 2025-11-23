@@ -39,13 +39,7 @@ def create_app(config=None):
     init_db(app)
     
     # Configurar CORS para permitir conexiones desde aplicación Android
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": ["*"],  # En producción, especificar dominios específicos
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-Requested-With"]
-        }
-    })
+    CORS(app)
     
     register_error_handlers(app)
     
