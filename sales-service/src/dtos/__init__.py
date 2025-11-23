@@ -18,6 +18,7 @@ from .visit_filters_and_utils import (
 from .visit_file_dtos import (
     VisitFileResponse,
     VisitFileUploadRequest,
+    VisitFileUrlRequest,
     VisitFileListResponse,
     FileUploadResponse,
     FileDeleteResponse
@@ -42,6 +43,7 @@ __all__ = [
     # File DTOs
     'VisitFileResponse',
     'VisitFileUploadRequest',
+    'VisitFileUrlRequest',
     'VisitFileListResponse',
     'FileUploadResponse',
     'FileDeleteResponse'

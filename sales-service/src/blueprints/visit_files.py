@@ -29,8 +29,9 @@ from src.errors.errors import NotFoundError, ValidationError
 visit_files_bp = Blueprint('visit_files', __name__, url_prefix='/visits')
 
 # Configuración de archivos
-ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.rtf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.xlsx', '.xls', '.csv', '.zip', '.rar'}
+ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.txt', '.rtf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.xlsx', '.xls', '.csv', '.zip', '.rar', '.mp4', '.avi', '.mov', '.mkv'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB para videos
 
 
 def upload_visit_file(file_data: VisitFileUploadRequest, file_path: str, stored_filename: str) -> VisitFileResponse:
@@ -143,14 +144,129 @@ def generate_unique_filename(original_filename: str) -> str:
 @visit_files_bp.route('/<int:visit_id>/files', methods=['POST'])
 def upload_file(visit_id: int):
     """
-    📎 Subir archivo a una visita (desde tab "Archivos")
+    📎 Registrar archivo en una visita
+    
+    Soporta dos formatos:
+    1. multipart/form-data: Subir archivo físico al servidor
+    2. application/json: Registrar URL de archivo externo (S3)
     
     Args:
         visit_id: ID de la visita
-        file: Archivo multipart
+    
+    Multipart Request:
+        file: Archivo binario
+    
+    JSON Request:
+        {
+            "file_url": "https://...",
+            "file_name": "video.mp4",
+            "file_size": 15728640,
+            "mime_type": "video/mp4"
+        }
     
     Returns:
-        VisitFileResponse: Información del archivo subido
+        FileUploadResponse: Información del archivo registrado
+    """
+    content_type = request.content_type or ''
+    
+    # Determinar tipo de request según Content-Type
+    if 'application/json' in content_type:
+        return _register_file_url(visit_id)
+    elif 'multipart/form-data' in content_type:
+        return _upload_physical_file(visit_id)
+    else:
+        return jsonify({
+            "success": False,
+            "message": "Content-Type no soportado. Use 'multipart/form-data' para archivos físicos o 'application/json' para URLs de S3",
+            "file": None
+        }), 415  # Unsupported Media Type
+
+
+def _register_file_url(visit_id: int):
+    """
+    Registrar URL de archivo externo (S3)
+    
+    Request JSON:
+        {
+            "file_url": "https://medisupply-videos.s3....",
+            "file_name": "video.mp4",
+            "file_size": 15728640,
+            "mime_type": "video/mp4"
+        }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validar campos requeridos
+        if not data:
+            raise BadRequest('Body JSON es requerido')
+        
+        if not data.get('file_url'):
+            raise BadRequest('file_url es requerido')
+        
+        if not data.get('file_name'):
+            raise BadRequest('file_name es requerido')
+        
+        file_url = data['file_url']
+        file_name = data['file_name']
+        
+        # Validar que la URL use HTTPS
+        if not file_url.startswith('https://'):
+            raise BadRequest('file_url debe usar HTTPS')
+        
+        # Validar extensión del archivo
+        if not allowed_file(file_name):
+            raise BadRequest(f'Extensión no permitida. Extensiones válidas: {list(ALLOWED_EXTENSIONS)}')
+        
+        # Verificar que la visita existe
+        visit = db.session.query(Visit).filter(Visit.id == visit_id).first()
+        if not visit:
+            raise NotFoundError(f"La visita con ID {visit_id} no existe")
+        
+        # Crear registro en base de datos con la URL de S3
+        file_data = VisitFileUploadRequest(
+            visit_id=visit_id,
+            file_name=file_name,
+            file_size=data.get('file_size', 0),
+            mime_type=data.get('mime_type', 'application/octet-stream')
+        )
+        
+        # Guardar en BD (file_path contendrá la URL de S3)
+        file_response = upload_visit_file(file_data, file_url, file_name)
+        
+        # Respuesta exitosa
+        response = FileUploadResponse(
+            success=True,
+            message="URL de archivo registrada exitosamente",
+            file=file_response
+        )
+        
+        return jsonify(response.dict()), 201
+        
+    except (BadRequest, ValidationError) as e:
+        return jsonify({
+            "success": False,
+            "message": str(e),
+            "file": None
+        }), 400
+    except NotFoundError as e:
+        return jsonify({
+            "success": False,
+            "message": str(e),
+            "file": None
+        }), 404
+    except Exception as e:
+        current_app.logger.error(f"Error registering file URL: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": "Error interno del servidor",
+            "file": None
+        }), 500
+
+
+def _upload_physical_file(visit_id: int):
+    """
+    Subir archivo físico al servidor (funcionalidad original)
     """
     try:
         # Verificar que se envió un archivo
