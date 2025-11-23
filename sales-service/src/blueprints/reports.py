@@ -2,8 +2,9 @@
 Blueprint for sales reports endpoints.
 Provides aggregated reports and analytics for sales data.
 """
+import os
 from datetime import datetime
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file, abort
 from src.commands.get_sales_summary_report import GetSalesSummaryReport
 from src.errors.errors import ApiError, ValidationError
 
@@ -340,6 +341,212 @@ def health_check():
         'endpoints': [
             '/reports/sales-summary',
             '/reports/sales-by-salesperson',
-            '/reports/sales-by-product'
+            '/reports/sales-by-product',
+            '/reports/export/excel',
+            '/reports/export/pdf'
         ]
     }), 200
+
+
+@reports_bp.route('/export/excel', methods=['GET'])
+def export_sales_summary_excel():
+    """
+    Export sales summary report to Excel file.
+    
+    Uses the same query parameters as /sales-summary endpoint.
+    
+    Query Parameters:
+        Same as /sales-summary endpoint
+        
+    Returns:
+        200: Excel file download
+        400: Validation error
+        500: Server error
+    
+    Example:
+        GET /reports/export/excel?region=Andina&month=11&year=2025
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.services.export_service import ReportExportService
+        
+        # Get query parameters (same as sales-summary)
+        from_date = request.args.get('from_date')
+        to_date = request.args.get('to_date')
+        region = request.args.get('region')
+        territory = request.args.get('territory')
+        product_sku = request.args.get('product_sku')
+        employee_id = request.args.get('employee_id')
+        order_status = request.args.get('order_status')
+        
+        # Validate date formats
+        if from_date:
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('from_date must be in YYYY-MM-DD format')
+        
+        if to_date:
+            try:
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('to_date must be in YYYY-MM-DD format')
+        
+        # Get month and year
+        month = request.args.get('month')
+        year = request.args.get('year')
+        
+        if month:
+            try:
+                month = int(month)
+            except ValueError:
+                raise ValidationError('Month must be a valid integer (1-12)')
+        
+        if year:
+            try:
+                year = int(year)
+            except ValueError:
+                raise ValidationError('Year must be a valid integer')
+        
+        # Execute command to get data
+        command = GetSalesSummaryReport(
+            from_date=from_date,
+            to_date=to_date,
+            region=region,
+            territory=territory,
+            product_sku=product_sku,
+            employee_id=employee_id,
+            month=month,
+            year=year,
+            order_status=order_status
+        )
+        
+        result = command.execute()
+        
+        # Export to Excel
+        export_service = ReportExportService()
+        filepath = export_service.export_to_excel(result, result.get('filters_applied', {}))
+        
+        # Send file and cleanup
+        def cleanup_file():
+            export_service.cleanup_file(filepath)
+        
+        filename = os.path.basename(filepath)
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except ValidationError as e:
+        return jsonify({
+            'error': str(e),
+            'error_type': 'validation_error'
+        }), 400
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Error generating Excel export: {str(e)}',
+            'error_type': 'server_error'
+        }), 500
+
+
+@reports_bp.route('/export/pdf', methods=['GET'])
+def export_sales_summary_pdf():
+    """
+    Export sales summary report to PDF file.
+    
+    Uses the same query parameters as /sales-summary endpoint.
+    
+    Query Parameters:
+        Same as /sales-summary endpoint
+        
+    Returns:
+        200: PDF file download
+        400: Validation error
+        500: Server error
+    
+    Example:
+        GET /reports/export/pdf?region=Andina&month=11&year=2025
+    """
+    try:
+        # Import here to avoid circular imports
+        from src.services.export_service import ReportExportService
+        
+        # Get query parameters (same as sales-summary)
+        from_date = request.args.get('from_date')
+        to_date = request.args.get('to_date')
+        region = request.args.get('region')
+        territory = request.args.get('territory')
+        product_sku = request.args.get('product_sku')
+        employee_id = request.args.get('employee_id')
+        order_status = request.args.get('order_status')
+        
+        # Validate date formats
+        if from_date:
+            try:
+                datetime.strptime(from_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('from_date must be in YYYY-MM-DD format')
+        
+        if to_date:
+            try:
+                datetime.strptime(to_date, '%Y-%m-%d')
+            except ValueError:
+                raise ValidationError('to_date must be in YYYY-MM-DD format')
+        
+        # Get month and year
+        month = request.args.get('month')
+        year = request.args.get('year')
+        
+        if month:
+            try:
+                month = int(month)
+            except ValueError:
+                raise ValidationError('Month must be a valid integer (1-12)')
+        
+        if year:
+            try:
+                year = int(year)
+            except ValueError:
+                raise ValidationError('Year must be a valid integer')
+        
+        # Execute command to get data
+        command = GetSalesSummaryReport(
+            from_date=from_date,
+            to_date=to_date,
+            region=region,
+            territory=territory,
+            product_sku=product_sku,
+            employee_id=employee_id,
+            month=month,
+            year=year,
+            order_status=order_status
+        )
+        
+        result = command.execute()
+        
+        # Export to PDF
+        export_service = ReportExportService()
+        filepath = export_service.export_to_pdf(result, result.get('filters_applied', {}))
+        
+        filename = os.path.basename(filepath)
+        return send_file(
+            filepath,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+        
+    except ValidationError as e:
+        return jsonify({
+            'error': str(e),
+            'error_type': 'validation_error'
+        }), 400
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Error generating PDF export: {str(e)}',
+            'error_type': 'server_error'
+        }), 500
