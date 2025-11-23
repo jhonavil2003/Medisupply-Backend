@@ -30,16 +30,19 @@ jobs:
           test -d catalog-service && echo "✅ catalog-service/ exists" || (echo "❌: catalog-service/ missing" && exit 1)
           test -d logistics-service && echo "✅ logistics-service/ exists" || (echo "❌: logistics-service/ missing" && exit 1)
           test -d sales-service && echo "✅ sales-service/ exists" || (echo "❌: sales-service/ missing" && exit 1)
+          test -d video-service && echo "✅ video-service/ exists" || (echo "❌: video-service/ missing" && exit 1)
           
           test -f docker-compose.yml && echo "✅ docker-compose.yml exists" || (echo "❌: docker-compose.yml missing" && exit 1)
           
           test -f catalog-service/Pipfile && echo "✅ catalog-service/Pipfile exists" || exit 1
           test -f logistics-service/Pipfile && echo "✅ logistics-service/Pipfile exists" || exit 1
           test -f sales-service/Pipfile && echo "✅ sales-service/Pipfile exists" || exit 1
+          test -f video-service/Pipfile && echo "✅ video-service/Pipfile exists" || exit 1
           
           test -f catalog-service/Pipfile.lock && echo "✅ catalog-service/Pipfile.lock exists" || exit 1
           test -f logistics-service/Pipfile.lock && echo "✅ logistics-service/Pipfile.lock exists" || exit 1
           test -f sales-service/Pipfile.lock && echo "✅ sales-service/Pipfile.lock exists" || exit 1
+          test -f video-service/Pipfile.lock && echo "✅ video-service/Pipfile.lock exists" || exit 1
           
           echo "✅ Project structure verified successfully"
 
@@ -57,6 +60,7 @@ jobs:
       catalog-service: ${{ steps.changes.outputs.catalog-service }}
       logistics-service: ${{ steps.changes.outputs.logistics-service }}
       sales-service: ${{ steps.changes.outputs.sales-service }}
+      video-service: ${{ steps.changes.outputs.video-service }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,6 +75,8 @@ jobs:
               - 'logistics-service/**'
             sales-service:
               - 'sales-service/**'
+            video-service:
+              - 'video-service/**'
 
   unit-test-catalog:
     name: "Unit Tests - Catalog Service"
@@ -294,11 +300,85 @@ jobs:
           name: coverage-sales
           path: sales-service/coverage.xml
 
+  unit-test-video:
+    name: "Unit Tests - Video Service"
+    runs-on: ubuntu-latest
+    needs: [setup-verification, detectar-cambios]
+    if: ${{ needs.detectar-cambios.outputs.video-service == 'true'}}
+
+    defaults:
+      run:
+        working-directory: ./video-service
+
+    env:
+      PIPENV_VENV_IN_PROJECT: "1"
+      PIPENV_NOSPIN: "1"
+      PIPENV_HIDE_EMOJIS: "1"
+      PIPENV_PYTHON: "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-video-${{ runner.os }}-${{ hashFiles('video-service/Pipfile.lock') }}
+          restore-keys: |
+            pip-video-${{ runner.os }}-
+
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          pip install "pipenv>=2023.0.0"
+
+      - name: Install dependencies
+        run: |
+          pipenv install --dev --skip-lock
+
+      - name: Show environment
+        run: |
+          pipenv run python --version
+          pipenv --venv
+          pipenv graph
+
+      - name: Ensure pytest is available
+        run: |
+          if [ ! -f .venv/bin/pytest ]; then
+            echo ".venv/bin/pytest missing, reinstalling dependencies..."
+            pipenv install --dev --skip-lock
+          fi
+
+      - name: Run video-service tests
+        run: |
+          echo "Running video-service unit tests..."
+          pipenv run pytest tests/ -v --tb=short \
+            --junitxml=pytest-video.xml \
+            --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-video-results
+          path: video-service/pytest-video.xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-video
+          path: video-service/coverage.xml
+
   coverage-report:
     name: "Coverage Analysis"
     runs-on: ubuntu-latest
-    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales]
-    if: always() && (needs.unit-test-catalog.result != 'skipped' || needs.unit-test-logistics.result != 'skipped' || needs.unit-test-sales.result != 'skipped')
+    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales, unit-test-video]
+    if: always() && (needs.unit-test-catalog.result != 'skipped' || needs.unit-test-logistics.result != 'skipped' || needs.unit-test-sales.result != 'skipped' || needs.unit-test-video.result != 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -331,14 +411,20 @@ jobs:
             echo "⚠️: Sales Service coverage report missing"
           fi
           
+          if [ -f "coverage-reports/coverage-video/coverage.xml" ]; then
+            echo "✅ Video Service coverage report found"
+          else
+            echo "⚠️: Video Service coverage report missing"
+          fi
+          
           echo ""
           echo "Check individual job outputs for detailed coverage metrics"
 
   integration-test-docker:
     name: "Integration Tests - Docker Compose"
     runs-on: ubuntu-latest
-    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales]
-    if: always() && (needs.unit-test-catalog.result != 'skipped' || needs.unit-test-logistics.result != 'skipped' || needs.unit-test-sales.result != 'skipped')
+    needs: [unit-test-catalog, unit-test-logistics, unit-test-sales, unit-test-video]
+    if: always() && (needs.unit-test-catalog.result != 'skipped' || needs.unit-test-logistics.result != 'skipped' || needs.unit-test-sales.result != 'skipped' || needs.unit-test-video.result != 'skipped')
 
     steps:
       - uses: actions/checkout@v4
@@ -367,9 +453,13 @@ jobs:
           SALES_HEALTH=$(curl -s http://localhost:3003/health || echo "FAILED")
           echo "Sales Service: $SALES_HEALTH"
           
+          VIDEO_HEALTH=$(curl -s http://localhost:3004/health || echo "FAILED")
+          echo "Video Service: $VIDEO_HEALTH"
+          
           if [[ "$CATALOG_HEALTH" == *"healthy"* ]] && \
              [[ "$LOGISTICS_HEALTH" == *"healthy"* ]] && \
-             [[ "$SALES_HEALTH" == *"healthy"* ]]; then
+             [[ "$SALES_HEALTH" == *"healthy"* ]] && \
+             [[ "$VIDEO_HEALTH" == *"healthy"* ]]; then
             echo "✅ All services are healthy"
           else
             echo "❌: Some services are not healthy"
@@ -393,6 +483,10 @@ jobs:
           CUSTOMERS=$(curl -s http://localhost:3003/customers)
           echo "Customers response: $CUSTOMERS"
           
+          echo "Test 4: GET /health from video-service"
+          VIDEO=$(curl -s http://localhost:3004/health || echo "FAILED")
+          echo "Video health response: $VIDEO"
+          
           echo "✅ Basic integration tests completed"
 
       - name: Stop services
@@ -410,6 +504,7 @@ jobs:
       - unit-test-catalog
       - unit-test-logistics
       - unit-test-sales
+      - unit-test-video
       - coverage-report
       - integration-test-docker
     if: always()
@@ -465,6 +560,17 @@ jobs:
             fi
           else
             echo "   ✅ Sales Service tests skipped"
+          fi
+          
+          if [[ "${{ needs.unit-test-video.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.unit-test-video.result }}" == "success" ]]; then
+              echo "   ✅ Video Service tests passed"
+            else
+              echo "   ❌: Video Service tests failed"
+              ((FAILURES++))
+            fi
+          else
+            echo "   ✅ Video Service tests skipped"
           fi
           
           echo ""
