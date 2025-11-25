@@ -73,6 +73,7 @@ def get_salespersons():
         # Parámetros de consulta
         territory = request.args.get('territory')
         is_active = request.args.get('is_active')
+        employee_id = request.args.get('employee_id')
         
         # Construir query
         query = Salesperson.query
@@ -83,6 +84,8 @@ def get_salespersons():
         if is_active is not None:
             is_active_bool = is_active.lower() in ['true', '1', 'yes']
             query = query.filter(Salesperson.is_active == is_active_bool)
+        if employee_id:
+            query = query.filter(Salesperson.employee_id == employee_id)
         
         # Ordenar por nombre
         salespersons = query.order_by(Salesperson.first_name, Salesperson.last_name).all()
