@@ -318,6 +318,55 @@ def get_customers_by_salesperson(salesperson_id):
             'error': f'An error occurred: {str(e)}'
         }), 500
 
+# python
+@customers_bp.route('/by-salesperson/employee/<string:employee_id>', methods=['GET'])
+def get_customers_by_salesperson_employee(employee_id):
+    """
+    Obtener clientes asignados a un vendedor identificado por su employee_id.
+
+    Path:
+        employee_id (str): employee id del vendedor
+
+    Query Params:
+        is_active (bool, opcional)
+        page (int, opcional, por defecto=1)
+        per_page (int, opcional, por defecto=50)
+    """
+    try:
+        from src.models.salesperson import Salesperson
+        from src.models.customer import Customer
+
+        # Buscar salesperson por employee_id
+        salesperson = Salesperson.query.filter_by(employee_id=employee_id).first()
+        if not salesperson:
+            return jsonify({'error': f'Salesperson with employee_id {employee_id} not found'}), 404
+
+        # Parámetros de query
+        is_active = request.args.get('is_active')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+
+        # Construir consulta
+        query = Customer.query.filter_by(salesperson_id=salesperson.id)
+
+        if is_active is not None:
+            is_active_bool = is_active.lower() in ['true', '1', 'yes']
+            query = query.filter_by(is_active=is_active_bool)
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        return jsonify({
+            'salesperson_id': salesperson.id,
+            'employee_id': employee_id,
+            'customers': [c.to_dict() for c in pagination.items],
+            'total': pagination.total,
+            'page': page,
+            'per_page': per_page,
+            'total_pages': pagination.pages
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
 @customers_bp.route('/batch', methods=['POST'])
 def get_customers_batch():
