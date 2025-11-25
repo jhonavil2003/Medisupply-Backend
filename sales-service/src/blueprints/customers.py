@@ -4,6 +4,7 @@ from src.commands.get_customer_by_id import GetCustomerById
 from src.commands.create_customer import CreateCustomer
 from src.commands.validate_document import ValidateDocument
 from src.commands.assign_salesperson_to_customer import AssignSalespersonToCustomer
+from src.entities.salesperson import Salesperson
 
 customers_bp = Blueprint('customers', __name__, url_prefix='/customers')
 
@@ -333,7 +334,6 @@ def get_customers_by_salesperson_employee(employee_id):
         per_page (int, opcional, por defecto=50)
     """
     try:
-        from src.models.salesperson import Salesperson
         from src.models.customer import Customer
 
         # Buscar salesperson por employee_id
